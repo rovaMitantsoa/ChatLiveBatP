@@ -206,8 +206,9 @@
         </div>
     </div>
 
-    <script src="/script/client.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/uuid/8.3.2/uuid.min.js"></script>
+    <script src="/script/client.js"></script>
+    
     <script>
         // Au chargement de la page
         document.addEventListener('DOMContentLoaded', function() {

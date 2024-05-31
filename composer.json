@@ -10,6 +10,8 @@
             "cboden/ratchet": "^0.4.4",
         "guzzlehttp/guzzle": "^7.8",
         "firebase/php-jwt": "^6.10",
-        "react/event-loop": "^1.1"
+        "react/event-loop": "^1.1",
+        "react/http": "^1.10",
+        "react/socket": "^1.15"
         }
 }
