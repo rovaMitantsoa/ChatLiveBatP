@@ -64,6 +64,10 @@
             font-size: 25px;
             font-weight: bold;
         }
+        .liste {
+            overflow-y:auto;
+            height: 29rem;
+        }
         #clientList {
             list-style-type: none;
             padding: 0; 
@@ -249,7 +253,7 @@
         </div>
     </div>
 
-    <script src="./wp-content/plugins/Message/script/admin.js"></script>
+    <!-- <script src="./wp-content/plugins/Message/script/admin.js"></script> -->
     
 </body>
 </html>

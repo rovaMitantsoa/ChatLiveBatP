@@ -1,4 +1,4 @@
-const socket = new WebSocket('ws://localhost:8081');
+const socket = new WebSocket('ws://localhost:8084');
 
 socket.addEventListener('open', (event) => {
     console.log('WebSocket connection ouverte:', event);
@@ -95,14 +95,14 @@ function markMessagesAsUnread(clientId) {
     clientListItem.classList.add('unread');
 }
 
-// Pour la création de Zone de discussion de chaque client
-socket.addEventListener('message', (event) => {
-    const data = JSON.parse(event.data);
-    const adminMessage = data.adminMessage;
-    const messageContent = data.content;
-    const clientId = data.clientId;
-    const clientName = data.clientName;
-    const messageType = data.type;
+// Pour la création de Zone de discussion de chaque client   
+socket.addEventListener('message', (event) => {   
+    const data = JSON.parse(event.data);   
+    const adminMessage = data.adminMessage;   
+    const messageContent = data.content;   
+    const clientId = data.clientId;   
+    const clientName = data.clientName;   
+    const messageType = data.type;   
 
     let clientMessageDiv = document.getElementById(`messageLog-${clientId}`);
     if (!clientMessageDiv) {

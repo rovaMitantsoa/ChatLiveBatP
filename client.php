@@ -126,19 +126,23 @@
             max-width: 100%; 
             height: auto; 
         }
-        #toeranaButton:disabled,
-        #oraFisokafanaButton:disabled,
-        #localisationButton:disabled,
-        #heureButton:disabled {
+        #outillageBouton:disabled, #savBouton:disabled,
+        #métallurgieBouton:disabled, #partenariatBouton:disabled,
+        #peintureBouton:disabled, #fournisseursBouton:disabled,
+        #sécuritéBouton:disabled, #recrutementBouton:disabled,
+        #travauxBouton:disabled, #contacterBouton:disabled,
+        #équipementBouton:disabled, #autresBouton:disabled {
             opacity: 0.6; 
             cursor: not-allowed;
         }
-        #malagasyButton,
-        #francaisButton,
-        #toeranaButton,
-        #oraFisokafanaButton,
-        #localisationButton,
-        #heureButton {
+        #malagasyButton, #francaisButton,
+        #niveau1,
+        #outillageBouton, #savBouton,
+        #métallurgieBouton, #partenariatBouton,
+        #peintureBouton, #fournisseursBouton,
+        #sécuritéBouton, #recrutementBouton,
+        #travauxBouton, #contacterBouton,
+        #équipementBouton, #autresBouton{
             background-color: #fff;
             color: #f0ae13;
             border: none; 
@@ -157,10 +161,13 @@
         }
         #malagasyButton:hover,
         #francaisButton:hover,
-        #toeranaButton:hover,
-        #oraFisokafanaButton:hover,
-        #localisationButton:hover,
-        #heureButton:hover {
+        #niveau1:hover,
+        #outillageBouton:hover, #savBouton:hover,
+        #métallurgieBouton:hover, #partenariatBouton:hover,
+        #peintureBouton:hover, #fournisseursBouton:hover,
+        #sécuritéBouton:hover, #recrutementBouton:hover,
+        #travauxBouton:hover, #contacterBouton:hover,
+        #équipementBouton:hover, #autresBouton:hover {
             background-color: #E61F4A; 
             color: #fff;
         }
@@ -207,7 +214,7 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/uuid/8.3.2/uuid.min.js"></script>
-    <script src="/script/client.js"></script>
+    <!-- <script src="/script/client.js"></script> -->
     
     <script>
         // Au chargement de la page

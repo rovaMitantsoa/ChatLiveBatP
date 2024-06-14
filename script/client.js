@@ -3,7 +3,7 @@ const clientId = localStorage.getItem('clientId') || uuid.v4();
 localStorage.setItem('clientId', clientId); // Stocker l'identifiant dans le stockage local
 
 // Connecter au serveur WebSocket en envoyant l'identifiant unique
-const socket = new WebSocket('ws://localhost:8081?clientId=' + clientId);
+const socket = new WebSocket('ws://localhost:8084?clientId=' + clientId);
 
 socket.addEventListener('open', (event) => {
     console.log('WebSocket connection opened:', event);
@@ -68,7 +68,7 @@ window.addEventListener('load', () => {
         // Si une adresse e-mail est déjà sauvegardée, passer directement à l'étape suivante du chatbot
         chatbotState = ChatbotStates.AWAITING_ANSWER;
     } else {
-        // Si aucune adresse e-mail n'est sauvegardée, demander au client de la saisir
+        // Si aucune adresse e-mail n'est sauvegardée, demander au client de choisir une langue
         initialResponse();
     }
 });
@@ -76,6 +76,7 @@ window.addEventListener('load', () => {
 // États possibles du chatbot
 const ChatbotStates = {
     INITIAL: 'INITIAL',
+    AWAITING_LANGUAGE: 'AWAITING_LANGUAGE',
     AWAITING_EMAIL: 'AWAITING_EMAIL', 
     AWAITING_ANSWER: 'AWAITING_ANSWER',
     ADMIN_INTERACTION: 'ADMIN_INTERACTION'
@@ -90,6 +91,9 @@ function chatbotResponse(userMessage) {
     switch (chatbotState) {
         case ChatbotStates.INITIAL:
             response = initialResponse(userMessage);
+            break;
+        case ChatbotStates.AWAITING_LANGUAGE:
+            response = awaitingLanguageResponse(userMessage);
             break;
         case ChatbotStates.AWAITING_EMAIL:
             response = awaitingEmailResponse(userMessage);
@@ -106,11 +110,29 @@ function chatbotResponse(userMessage) {
     }
     return response;
 }
-
 // Fonction pour gérer la réponse initiale du chatbot
 function initialResponse(userMessage) {
-    chatbotState = ChatbotStates.AWAITING_EMAIL; // Mettre à jour l'état
-    return "Veuillez saisir votre adresse email :";
+    chatbotState = ChatbotStates.AWAITING_LANGUAGE; // Mettre à jour l'état
+    return "Veuillez choisir une langue : <br>" +
+        "<button id='malagasyButton' onclick='sendMessage(\"Malagasy\", this)'>Malagasy</button>" +
+        "<button id='francaisButton' onclick='sendMessage(\"Français\", this)'>Français</button>";
+}
+
+// Fonction pour gérer la réponse lors du choix de la langue
+function awaitingLanguageResponse(userMessage) {
+    const lowerCaseMessage = userMessage.toLowerCase();
+    if (lowerCaseMessage === "malagasy" || lowerCaseMessage === "français") {
+        // Si l'utilisateur a choisi une langue, passer à l'étape de saisie de l'adresse e-mail
+        chatbotState = ChatbotStates.AWAITING_EMAIL;
+        return "Veuillez choisir :" +
+            "<button id='niveau1' onclick='sendMessage(\"Professionnel\", this)'>Professionnel</button>" +
+            "<button id='niveau1' onclick='sendMessage(\"Particulier\", this)'>Particulier</button>";
+    } else {
+        // Si l'utilisateur n'a pas choisi une langue valide, demander à nouveau
+        return "Veuillez choisir une language: <br>" +
+            "<button id='malagasyButton' onclick='sendMessage(\"Malagasy\", this)'>Malagasy</button>" +
+            "<button id='francaisButton' onclick='sendMessage(\"Français\", this)'>Français</button>";
+    }
 }
 
 //Fonction pour vérifier l'adresse e-mail
@@ -129,18 +151,33 @@ function awaitingEmailResponse(userMessage) {
         // Sauvegarder l'adresse e-mail du client dans le stockage local
         localStorage.setItem('userEmail', email);
         return "Adresse email valide. <br><br>" +
-            "Veuillez choisir une langue : <br>" +
-            "<button id='malagasyButton' onclick='sendMessage(\"Malagasy\", this)'>Malagasy</button>" +
-            "<button id='francaisButton' onclick='sendMessage(\"Français\", this)'>Français</button>";
+            "Veuillez choisir une option : <br>" +
+            "<button id='niveau1' onclick='sendMessage(\"Je cherche un produit\", this)'>Je cherche un produit</button>" +
+            "<button id='niveau1' onclick='sendMessage(\"Demander des renseignements\", this)'>Demander des renseignements</button>" +
+            "<button id='niveau1' onclick='sendMessage(\"Demander un devis\", this)'>Demander un devis</button>" +
+            "<button id='niveau1' onclick='sendMessage(\"Détails sur un produit\", this)'>Détails sur un produit</button>" +
+            "<button id='niveau1' onclick='sendMessage(\"Service après vente\", this)'>Service après vente</button>" +
+            "<button id='niveau1' onclick='sendMessage(\"Autres\", this)'>Autres</button>" ;
     }
     else {
         // L'adresse email n'est pas valide, demander au client de saisir à nouveau
-        return "Bonjour, veuillez saisir votre adresse e-mail";
+        return "Veuillez saisir une adresse e-mail ou numéro de téléphone";
     }
 }
 
 // Variable de contrôle pour suivre si une réponse a été envoyée
 let responseSent = false; 
+let awaitingLinkOrPhoto = false;
+let awaitingDevis = false;
+let awaitingPayement = false;
+let lieuLivraison = false;
+let autreInfo = false;
+let awaitingYesNoResponse = false;
+let detailsProd = false;
+let detailYesNo = false;
+
+// Variable pour stocker le message
+const requestLinkOrPhotoMessage = "Veuillez envoyer le lien ou la photo du produit";
 
 function awaitingAnswerResponse(userMessage) {
     // Convertir le message en minuscules pour une correspondance insensible à la casse
@@ -150,34 +187,176 @@ function awaitingAnswerResponse(userMessage) {
     // Réinitialisation de  la variable responseSent à false à chaque réponse du client
     responseSent = false;
     if (!responseSent) { // Vérifier si une réponse n'a pas déjà été envoyée
-        if (lowerCaseMessage === "malagasy") {
-            response = "Miarahaba anao tongasoa. Inona no azo hanampiana anao ?<br>" +
-            "<button id='toeranaButton' onclick='sendMessage(\"Toerana\", this)'>Toerana misy anay?</button>" +
-            "<button id='oraFisokafanaButton' onclick='sendMessage(\"Ora fisokafana\", this)'>Ora fisokafana</button>" ;
-        } else if (lowerCaseMessage === "toerana") {
-            response = "Hitanao ety Soanierana ny magazay misy anay.";
-            document.getElementById('toeranaButton').disabled = true; // Désactiver le bouton
+         // Si le chatbot attend un lien ou une photo pour un devis
+         if (awaitingDevis) {
+            response = "En combien de quantité ?";
+            awaitingDevis = false; // Réinitialiser le statut
             responseSent = true; // Marquer que la réponse a été envoyée
-        } else if (lowerCaseMessage === "ora fisokafana") {
-            response = "Maraina: 07h45 hatramin'ny 12h - Hariva: 14h hatramin'ny 17h";
-            document.getElementById('oraFisokafanaButton').disabled = true; // Désactiver le bouton
+        } else if (awaitingLinkOrPhoto) {
+            response = "Patientez un moment, je vérifie le stock";
+            awaitingLinkOrPhoto = false; // Réinitialiser le statut
             responseSent = true; // Marquer que la réponse a été envoyée
-        } else if (lowerCaseMessage === "français") {
-            response = "Bonjour bienvenu. En quoi puis-je vous aider ?<br>"+
-            "<button id='localisationButton' onclick='sendMessage(\"Localisation\", this)'>Notre localisation?</button>" +
-            "<button id='heureButton' onclick='sendMessage(\"Heure\", this)'>Heure d'ouverture?</button>" ;
-        } else if (lowerCaseMessage === "localisation") {
-            response = "Nous nous situons à Soanierana";
-            document.getElementById('localisationButton').disabled = true; // Désactiver le bouton
-            responseSent = true; // Marquer que la réponse a été envoyée
-        } else if (lowerCaseMessage === "heure") {
-            response = "Matin: 07h45 - 12h - Après-midi: 14h - 17h";
-            document.getElementById('heureButton').disabled = true; // Désactiver le bouton
+        } else if (awaitingPayement) {
+            response  = "Quel est votre mode de paiement? <br><br>" + 
+                "<button id='niveau1' onclick='sendMessage(\"Espèce\", this)'>Espèce</button>" +
+                "<button id='niveau1' onclick='sendMessage(\"Chèque\", this)'>Chèque</button>" +
+                "<button id='niveau1' onclick='sendMessage(\"Virement\", this)'>Virement</button>" +
+                "<button id='niveau1' onclick='sendMessage(\"Autre\", this)'>Autre</button>" ;
+            awaitingPayement = false;
+            responseSent = true;
+        } else if (lieuLivraison){
+            response = "Veuillez indiquer votre nom, ainsi que la date et le lieu de livraison souhaités";
+            lieuLivraison = false;
+            responseSent = true;
+        } else if (autreInfo) {
+            response = "Souhaitez-vous rajouter d’autres informations ? <br><br>" + 
+                "<button id='niveau1' onclick='sendMessage(\"Oui\", this)'>Oui</button>" +
+                "<button id='niveau1' onclick='sendMessage(\"Non\", this)'>Non</button>" ;
+            autreInfo = false;
+            responseSent = true;
+        } else if(awaitingYesNoResponse) {
+            if (lowerCaseMessage === "oui") {
+                response = "En quoi d’autre puis-je vous aider ?";
+            } else if (lowerCaseMessage === "non") {
+                response = "Notre service commercial vous enverra un devis par e-mail sous peu. Merci de nous avoir contacté. A bientôt !";
+            }
+            awaitingYesNoResponse = false;
+            responseSent = true;
+        } else if(detailsProd) {
+            response = "Avez-vous eu la fiche technique correspondante ? <br><br>"+ 
+            "<button id='niveau1' onclick='sendMessage(\"Oui\", this)'>Oui</button>" +
+            "<button id='niveau1' onclick='sendMessage(\"Non\", this)'>Non</button>" ;
+            detailsProd = false;
+            responseSent = true;
+        } else if (detailYesNo) {
+            if (lowerCaseMessage === "oui") {
+                responseSent = true;
+            } else if (lowerCaseMessage === "non") {
+                response = "Quelle informations voudriez-vous avoir ?";
+            }
+            detailYesNo = false;
             responseSent = true;
         }
-    }
-    return response;
+
+        //1
+        else if (lowerCaseMessage === "je cherche un produit") {
+                response = "Quels produits?<br>" +
+                "<button id='outillageBouton' onclick='sendMessage(\"Outillage\", this)'>Outillage</button>" +
+                "<button id='métallurgieBouton' onclick='sendMessage(\"Métallurgie\", this)'>Métallurgie</button>" +
+                "<button id='peintureBouton' onclick='sendMessage(\"Peinture & étanchéité\", this)'>Peinture & étanchéité</button>" +
+                "<button id='sécuritéBouton' onclick='sendMessage(\"Sécurité incendie\", this)'>Sécurité incendie</button>" +
+                "<button id='travauxBouton' onclick='sendMessage(\"Travaux publics & génie civil\", this)'>Travaux publics & génie civil</button>" +
+                "<button id='équipementBouton' onclick='sendMessage(\"Équipement électrique & soudage\", this)'>Équipement électrique & soudage </button>" ;
+            } else if (lowerCaseMessage === "outillage") {
+                response = requestLinkOrPhotoMessage;
+                document.getElementById('outillageBouton').disabled = true; // Désactiver le bouton
+                awaitingLinkOrPhoto = true;
+                responseSent = true; // Marquer que la réponse a été envoyée
+            } else if (lowerCaseMessage === "métallurgie") {
+                response = requestLinkOrPhotoMessage;
+                document.getElementById('métallurgieBouton').disabled = true; // Désactiver le bouton
+                awaitingLinkOrPhoto = true;
+                responseSent = true; // Marquer que la réponse a été envoyée
+            } else if (lowerCaseMessage === "peinture & étanchéité") {
+                response = requestLinkOrPhotoMessage;
+                document.getElementById('peintureBouton').disabled = true; // Désactiver le bouton
+                awaitingLinkOrPhoto = true;
+                responseSent = true; // Marquer que la réponse a été envoyée
+            }
+            else if (lowerCaseMessage === "sécurité incendie") {
+                response = requestLinkOrPhotoMessage;
+                document.getElementById('sécuritéBouton').disabled = true; // Désactiver le bouton
+                awaitingLinkOrPhoto = true;
+                responseSent = true; // Marquer que la réponse a été envoyée
+            }
+            else if (lowerCaseMessage === "travaux publics & génie civil") {
+                response = requestLinkOrPhotoMessage;
+                document.getElementById('travauxBouton').disabled = true; // Désactiver le bouton
+                awaitingLinkOrPhoto = true;
+                responseSent = true; // Marquer que la réponse a été envoyée
+            }
+            else if (lowerCaseMessage === "équipement électrique & soudage") {
+                response = requestLinkOrPhotoMessage;
+                document.getElementById('équipementBouton').disabled = true; // Désactiver le bouton
+                awaitingLinkOrPhoto = true;
+                responseSent = true; // Marquer que la réponse a été envoyée
+            }
+            
+            //2 
+            else if (lowerCaseMessage === "demander des renseignements") {
+                response = "Quels renseignements?<br>"+
+                "<button id='savBouton' onclick='sendMessage(\"SAV\", this)'>SAV</button>" +
+                "<button id='partenariatBouton' onclick='sendMessage(\"Partenariat\", this)'>Partenariat</button>" +
+                "<button id='fournisseursBouton' onclick='sendMessage(\"Fournisseurs\", this)'>Fournisseurs</button>" +
+                "<button id='recrutementBouton' onclick='sendMessage(\"Recrutement\", this)'>Recrutement</button>" +
+                "<button id='contacterBouton' onclick='sendMessage(\"Contacter magasins\", this)'>Contacter magasins</button>" +
+                "<button id='autresBouton' onclick='sendMessage(\"Autres\", this)'>Autres </button>" ;
+            } else if (lowerCaseMessage === "sav") {
+                response = requestLinkOrPhotoMessage;
+                document.getElementById('savBouton').disabled = true; // Désactiver le bouton
+                awaitingLinkOrPhoto = true;
+                responseSent = true; // Marquer que la réponse a été envoyée
+            }  else if (lowerCaseMessage === "partenariat") {
+                response = requestLinkOrPhotoMessage;
+                document.getElementById('partenariatBouton').disabled = true; // Désactiver le bouton
+                awaitingLinkOrPhoto = true;
+                responseSent = true; // Marquer que la réponse a été envoyée
+            } else if (lowerCaseMessage === "fournisseurs") {
+                response = requestLinkOrPhotoMessage;
+                document.getElementById('fournisseursBouton').disabled = true; // Désactiver le bouton
+                awaitingLinkOrPhoto = true;
+                responseSent = true; // Marquer que la réponse a été envoyée
+            } else if (lowerCaseMessage === "recrutement") {
+                response = requestLinkOrPhotoMessage;
+                document.getElementById('recrutementBouton').disabled = true; // Désactiver le bouton
+                awaitingLinkOrPhoto = true;
+                responseSent = true; // Marquer que la réponse a été envoyée
+            } else if (lowerCaseMessage === "contacter magasins") {
+                response = requestLinkOrPhotoMessage;
+                document.getElementById('contacterBouton').disabled = true; // Désactiver le bouton
+                awaitingLinkOrPhoto = true;
+                responseSent = true; // Marquer que la réponse a été envoyée
+            } else if (lowerCaseMessage === "autres") {
+                response = requestLinkOrPhotoMessage;
+                document.getElementById('autresBouton').disabled = true; // Désactiver le bouton
+                awaitingLinkOrPhoto = true;
+                responseSent = true; // Marquer que la réponse a été envoyée
+            }
+            
+            //3
+            else if (lowerCaseMessage === "demander un devis") {
+                response = requestLinkOrPhotoMessage;
+                awaitingDevis = true;
+                awaitingPayement = true;
+                responseSent = true; // Marquer que la réponse a été envoyée
+                lieuLivraison = true;
+                autreInfo = true;
+                awaitingYesNoResponse = true;
+            }
+
+            //4
+            if (lowerCaseMessage === "détails sur un produit") {
+                response = requestLinkOrPhotoMessage;
+                detailsProd = true;
+                detailYesNo= true;
+                responseSent = true; // Marquer que la réponse a été envoyée
+            }
+
+            //5 Service après vente
+            if (lowerCaseMessage === "service après vente") {
+                response = "" +
+                    "<button id='savBouton' onclick='sendMessage(\"Réclamation\", this)'>Réclamation</button>" +
+                    "<button id='partenariatBouton' onclick='sendMessage(\"Réparer un produit\", this)'>Réparer un produit</button>" +
+                    "<button id='fournisseursBouton' onclick='sendMessage(\"Chercher des pièces détachées\", this)'>Chercher des pièces détachées</button>" +
+                    "<button id='recrutementBouton' onclick='sendMessage(\"Garantie\", this)'>Garantie</button>" +
+                    "<button id='contacterBouton' onclick='sendMessage(\"Récupérer un produit\", this)'>Récupérer un produit</button>" +
+                    "<button id='autresBouton' onclick='sendMessage(\"Autre\", this)'>Autre</button>" ;
+                responseSent = true; // Marquer que la réponse a été envoyée
+            }
+        }
+        return response;
 }
+
 
 // Fonction pour envoyer le message à l'admin
 function sendMessage(message, button) {
