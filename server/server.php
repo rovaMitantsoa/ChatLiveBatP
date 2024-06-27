@@ -9,15 +9,15 @@
     use MyApp\MessageServer;
 
 
-$server = IoServer::factory(
-    new HttpServer(
-        new WsServer(
-            new MessageServer()
-        )
-    ),
-    8084
-);
+    $server = IoServer::factory(
+        new HttpServer(
+            new WsServer(
+                new MessageServer()
+            )
+        ),
+        8084
+    );
 
-echo "Serveur en marche sur le port 8084...\n";
-$server->run();
+    echo "Serveur en marche sur le port 8084...\n";
+    $server->run();
 ?>

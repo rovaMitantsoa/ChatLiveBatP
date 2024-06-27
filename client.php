@@ -11,11 +11,13 @@
             100% {transform: translateX(-100%);}/* Déplacer le message complètement à gauche de l'écran */
         }
         .container {
-            width: 450px;
+            width: 400px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 0;
+            border-radius: 10px;
             position: fixed;
-            bottom: 80px; 
+            box-shadow: -6px 8px 10px rgba(0.3, 0.3, 0.1, 0.3), 6px 8px 10px rgba(0.3, 0.3, 0.3, 0.3);
+            bottom: 90px; 
             right: 20px;
             z-index: 2; 
             display: none; 
@@ -43,12 +45,11 @@
         }
         .message-log {
             overflow-y: auto;
-            height: 400px;
+            height: 350px;
+            width: 377.5px;
             border: 1px solid #ddd;
             padding: 10px;
             background-color: #f5f5f5;
-            border-bottom-left-radius: 10px;
-            border-bottom-right-radius: 10px;
             scroll-behavior: smooth;
         }
         .input-container input[type="text"] {
@@ -101,7 +102,7 @@
             margin-bottom: 10px;
             padding: 5px;
             border-radius: 10px;
-            background-color: #26b6b4;
+            background-color: #066eb7;
             max-width: 60%;
             clear: both;
             word-wrap: break-word;
@@ -126,12 +127,15 @@
             max-width: 100%; 
             height: auto; 
         }
+        #malagasyButton:disabled, #francaisButton:disabled,
         #outillageBouton:disabled, #savBouton:disabled,
         #métallurgieBouton:disabled, #partenariatBouton:disabled,
         #peintureBouton:disabled, #fournisseursBouton:disabled,
         #sécuritéBouton:disabled, #recrutementBouton:disabled,
         #travauxBouton:disabled, #contacterBouton:disabled,
-        #équipementBouton:disabled, #autresBouton:disabled {
+        #équipementBouton:disabled, #autresBouton:disabled, 
+        #quincaillerieBouton:disabled, #jardinBouton:disabled
+        #boutonAutre:disabled, #niveau1:disabled{
             opacity: 0.6; 
             cursor: not-allowed;
         }
@@ -142,7 +146,8 @@
         #peintureBouton, #fournisseursBouton,
         #sécuritéBouton, #recrutementBouton,
         #travauxBouton, #contacterBouton,
-        #équipementBouton, #autresBouton{
+        #équipementBouton, #autresBouton, #quincaillerieBouton
+        #jardinBouton, #boutonAutre {
             background-color: #fff;
             color: #f0ae13;
             border: none; 
@@ -167,7 +172,9 @@
         #peintureBouton:hover, #fournisseursBouton:hover,
         #sécuritéBouton:hover, #recrutementBouton:hover,
         #travauxBouton:hover, #contacterBouton:hover,
-        #équipementBouton:hover, #autresBouton:hover {
+        #équipementBouton:hover, #autresBouton:hover
+        #quincaillerieBouton:hover, #jardinBouton:hover,
+        #boutonAutre:hover {
             background-color: #E61F4A; 
             color: #fff;
         }
@@ -187,17 +194,22 @@
             width: 50px; 
             height: auto;
         }
+        #logo {
+            width: 80px;
+            height: 40px;
+        }
     </style>
 </head>
 <body>
     <!-- Bulle de discussion -->
     <div class="bubble" id="bubble">
         <!-- Icône de la bulle de discussion -->
-        <img src="http://localhost/chat/wp-content/plugins/Message/image/facebook-messenger.png" alt="Chat Bubble Icon">
+        <img src="http://localhost/chat/wp-content/plugins/Message/image/74-749108_download-png-ico-icns-facebook-messenger-round-icon-removebg-preview.png" alt="Chat Bubble Icon">
     </div>
     <!-- Conteneur de chat -->
     <div class="container" id="container" style="display: none;">
         <div class="chat-header">
+        <img id="logo" src="http://localhost/chat/wp-content/plugins/Message/image/logo-BATPRO_200x200pxl-removebg-preview.png" alt="Rechercher">
             <h1 id="clientName"></h1>
         </div>
         <div class="message-log" id="messageLog">

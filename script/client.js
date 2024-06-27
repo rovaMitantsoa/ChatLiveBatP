@@ -110,13 +110,21 @@ function chatbotResponse(userMessage) {
     }
     return response;
 }
+
+function disableButton(buttonId) {
+    const button = document.getElementById(buttonId);
+    if (button) {
+        button.disabled = true;
+    }
+}
+
 // Fonction pour gérer la réponse initiale du chatbot
 function initialResponse(userMessage) {
     chatbotState = ChatbotStates.AWAITING_LANGUAGE; // Mettre à jour l'état
     return "Veuillez choisir une langue : <br>" +
         "<button id='malagasyButton' onclick='sendMessage(\"Malagasy\", this)'>Malagasy</button>" +
         "<button id='francaisButton' onclick='sendMessage(\"Français\", this)'>Français</button>";
-}
+    }
 
 // Fonction pour gérer la réponse lors du choix de la langue
 function awaitingLanguageResponse(userMessage) {
@@ -135,29 +143,29 @@ function awaitingLanguageResponse(userMessage) {
     }
 }
 
-//Fonction pour vérifier l'adresse e-mail
-function isValidEmail(email) {
-    // Expression régulière pour vérifier le format de l'adresse e-mail
+// Fonction pour vérifier l'adresse e-mail ou le numéro de téléphone
+function isValidEmailOrPhone(input) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+    const phoneRegex = /^\+?[0-9\s\-]{10,}$/;
+    return emailRegex.test(input) || phoneRegex.test(input);
 }
 
 // Fonction pour gérer la réponse lors de la saisie de l'adresse e-mail
 function awaitingEmailResponse(userMessage) {
     const email = userMessage.trim(); // Supprimer les espaces blancs inutiles
-    if (isValidEmail(email)) {
+    if (isValidEmailOrPhone(email)) {
         // L'adresse email est valide, passer à l'étape suivante du chatbot
         chatbotState = ChatbotStates.AWAITING_ANSWER;
         // Sauvegarder l'adresse e-mail du client dans le stockage local
         localStorage.setItem('userEmail', email);
-        return "Adresse email valide. <br><br>" +
+        return "Contact valide. <br><br>" +
             "Veuillez choisir une option : <br>" +
             "<button id='niveau1' onclick='sendMessage(\"Je cherche un produit\", this)'>Je cherche un produit</button>" +
             "<button id='niveau1' onclick='sendMessage(\"Demander des renseignements\", this)'>Demander des renseignements</button>" +
             "<button id='niveau1' onclick='sendMessage(\"Demander un devis\", this)'>Demander un devis</button>" +
             "<button id='niveau1' onclick='sendMessage(\"Détails sur un produit\", this)'>Détails sur un produit</button>" +
             "<button id='niveau1' onclick='sendMessage(\"Service après vente\", this)'>Service après vente</button>" +
-            "<button id='niveau1' onclick='sendMessage(\"Autres\", this)'>Autres</button>" ;
+            "<button id='boutonAutre' onclick='sendMessage(\"Autres\", this)'>Autres</button>" ;
     }
     else {
         // L'adresse email n'est pas valide, demander au client de saisir à nouveau
@@ -178,6 +186,7 @@ let detailYesNo = false;
 
 // Variable pour stocker le message
 const requestLinkOrPhotoMessage = "Veuillez envoyer le lien ou la photo du produit";
+const requestAutreAide = "Bienvenue au service commercial de BATPRO. Comment pouvons-nous vous aider ?";
 
 function awaitingAnswerResponse(userMessage) {
     // Convertir le message en minuscules pour une correspondance insensible à la casse
@@ -201,7 +210,7 @@ function awaitingAnswerResponse(userMessage) {
                 "<button id='niveau1' onclick='sendMessage(\"Espèce\", this)'>Espèce</button>" +
                 "<button id='niveau1' onclick='sendMessage(\"Chèque\", this)'>Chèque</button>" +
                 "<button id='niveau1' onclick='sendMessage(\"Virement\", this)'>Virement</button>" +
-                "<button id='niveau1' onclick='sendMessage(\"Autre\", this)'>Autre</button>" ;
+                "<button id='niveau1' onclick='sendMessage(\"Autres\", this)'>Autres</button>" ;
             awaitingPayement = false;
             responseSent = true;
         } else if (lieuLivraison){
@@ -209,14 +218,14 @@ function awaitingAnswerResponse(userMessage) {
             lieuLivraison = false;
             responseSent = true;
         } else if (autreInfo) {
-            response = "Souhaitez-vous rajouter d’autres informations ? <br><br>" + 
+            response = "Souhaitez-vous rajouter d'autres informations ? <br><br>" + 
                 "<button id='niveau1' onclick='sendMessage(\"Oui\", this)'>Oui</button>" +
                 "<button id='niveau1' onclick='sendMessage(\"Non\", this)'>Non</button>" ;
             autreInfo = false;
             responseSent = true;
         } else if(awaitingYesNoResponse) {
             if (lowerCaseMessage === "oui") {
-                response = "En quoi d’autre puis-je vous aider ?";
+                response = "En quoi d'autre puis-je vous aider ?";
             } else if (lowerCaseMessage === "non") {
                 response = "Notre service commercial vous enverra un devis par e-mail sous peu. Merci de nous avoir contacté. A bientôt !";
             }
@@ -249,35 +258,35 @@ function awaitingAnswerResponse(userMessage) {
                 "<button id='équipementBouton' onclick='sendMessage(\"Équipement électrique & soudage\", this)'>Équipement électrique & soudage </button>" ;
             } else if (lowerCaseMessage === "outillage") {
                 response = requestLinkOrPhotoMessage;
-                document.getElementById('outillageBouton').disabled = true; // Désactiver le bouton
+                disableButton('outillageButton');
                 awaitingLinkOrPhoto = true;
                 responseSent = true; // Marquer que la réponse a été envoyée
             } else if (lowerCaseMessage === "métallurgie") {
                 response = requestLinkOrPhotoMessage;
-                document.getElementById('métallurgieBouton').disabled = true; // Désactiver le bouton
+                disableButton('métallurgieBouton');
                 awaitingLinkOrPhoto = true;
                 responseSent = true; // Marquer que la réponse a été envoyée
             } else if (lowerCaseMessage === "peinture & étanchéité") {
                 response = requestLinkOrPhotoMessage;
-                document.getElementById('peintureBouton').disabled = true; // Désactiver le bouton
+                disableButton('peintureBouton');
                 awaitingLinkOrPhoto = true;
                 responseSent = true; // Marquer que la réponse a été envoyée
             }
             else if (lowerCaseMessage === "sécurité incendie") {
                 response = requestLinkOrPhotoMessage;
-                document.getElementById('sécuritéBouton').disabled = true; // Désactiver le bouton
+                disableButton('sécuritéBouton');
                 awaitingLinkOrPhoto = true;
                 responseSent = true; // Marquer que la réponse a été envoyée
             }
             else if (lowerCaseMessage === "travaux publics & génie civil") {
                 response = requestLinkOrPhotoMessage;
-                document.getElementById('travauxBouton').disabled = true; // Désactiver le bouton
+                disableButton('travauxBouton');
                 awaitingLinkOrPhoto = true;
                 responseSent = true; // Marquer que la réponse a été envoyée
             }
             else if (lowerCaseMessage === "équipement électrique & soudage") {
                 response = requestLinkOrPhotoMessage;
-                document.getElementById('équipementBouton').disabled = true; // Désactiver le bouton
+                disableButton('équipementBouton');
                 awaitingLinkOrPhoto = true;
                 responseSent = true; // Marquer que la réponse a été envoyée
             }
@@ -290,36 +299,35 @@ function awaitingAnswerResponse(userMessage) {
                 "<button id='fournisseursBouton' onclick='sendMessage(\"Fournisseurs\", this)'>Fournisseurs</button>" +
                 "<button id='recrutementBouton' onclick='sendMessage(\"Recrutement\", this)'>Recrutement</button>" +
                 "<button id='contacterBouton' onclick='sendMessage(\"Contacter magasins\", this)'>Contacter magasins</button>" +
-                "<button id='autresBouton' onclick='sendMessage(\"Autres\", this)'>Autres </button>" ;
+                "<button id='boutonAutre' onclick='sendMessage(\"Autres\", this)'>Autres </button>" ;
             } else if (lowerCaseMessage === "sav") {
                 response = requestLinkOrPhotoMessage;
-                document.getElementById('savBouton').disabled = true; // Désactiver le bouton
+                disableButton('savBouton');                
                 awaitingLinkOrPhoto = true;
                 responseSent = true; // Marquer que la réponse a été envoyée
             }  else if (lowerCaseMessage === "partenariat") {
                 response = requestLinkOrPhotoMessage;
-                document.getElementById('partenariatBouton').disabled = true; // Désactiver le bouton
+                disableButton('partenariatBouton');                
                 awaitingLinkOrPhoto = true;
                 responseSent = true; // Marquer que la réponse a été envoyée
             } else if (lowerCaseMessage === "fournisseurs") {
                 response = requestLinkOrPhotoMessage;
-                document.getElementById('fournisseursBouton').disabled = true; // Désactiver le bouton
+                disableButton('fournisseursBouton');                
                 awaitingLinkOrPhoto = true;
                 responseSent = true; // Marquer que la réponse a été envoyée
             } else if (lowerCaseMessage === "recrutement") {
                 response = requestLinkOrPhotoMessage;
-                document.getElementById('recrutementBouton').disabled = true; // Désactiver le bouton
+                disableButton('recrutementBouton');                
                 awaitingLinkOrPhoto = true;
                 responseSent = true; // Marquer que la réponse a été envoyée
             } else if (lowerCaseMessage === "contacter magasins") {
                 response = requestLinkOrPhotoMessage;
-                document.getElementById('contacterBouton').disabled = true; // Désactiver le bouton
+                disableButton('contacterBouton');                
                 awaitingLinkOrPhoto = true;
                 responseSent = true; // Marquer que la réponse a été envoyée
             } else if (lowerCaseMessage === "autres") {
-                response = requestLinkOrPhotoMessage;
-                document.getElementById('autresBouton').disabled = true; // Désactiver le bouton
-                awaitingLinkOrPhoto = true;
+                response = requestAutreAide;
+                disableButton('boutonAutre');                
                 responseSent = true; // Marquer que la réponse a été envoyée
             }
             
@@ -332,6 +340,9 @@ function awaitingAnswerResponse(userMessage) {
                 lieuLivraison = true;
                 autreInfo = true;
                 awaitingYesNoResponse = true;
+                disableButton('devisButton');
+                disableButton('lieuLivraisonButton');
+                disableButton('autreInfoButton');
             }
 
             //4
@@ -340,9 +351,10 @@ function awaitingAnswerResponse(userMessage) {
                 detailsProd = true;
                 detailYesNo= true;
                 responseSent = true; // Marquer que la réponse a été envoyée
+                disableButton('detailsButton');
             }
 
-            //5 Service après vente
+            //5 
             if (lowerCaseMessage === "service après vente") {
                 response = "" +
                     "<button id='savBouton' onclick='sendMessage(\"Réclamation\", this)'>Réclamation</button>" +
@@ -350,8 +362,15 @@ function awaitingAnswerResponse(userMessage) {
                     "<button id='fournisseursBouton' onclick='sendMessage(\"Chercher des pièces détachées\", this)'>Chercher des pièces détachées</button>" +
                     "<button id='recrutementBouton' onclick='sendMessage(\"Garantie\", this)'>Garantie</button>" +
                     "<button id='contacterBouton' onclick='sendMessage(\"Récupérer un produit\", this)'>Récupérer un produit</button>" +
-                    "<button id='autresBouton' onclick='sendMessage(\"Autre\", this)'>Autre</button>" ;
+                    "<button id='boutonAutre' onclick='sendMessage(\"Autres\", this)'>Autres</button>" ;
                 responseSent = true; // Marquer que la réponse a été envoyée
+                
+            }
+            //6
+            if (lowerCaseMessage === "autres") {
+                response = requestAutreAide;
+                responseSent = true;
+                disableButton('autresButton');
             }
         }
         return response;

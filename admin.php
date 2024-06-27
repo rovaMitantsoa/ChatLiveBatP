@@ -9,13 +9,17 @@
             color: white;
             font-size: 35px;
             font-weight: bold;
+            /* margin: 0 0; */
+            align-items: center;
+            justify-content: center;
         }
         .titre {
+            display: flex;
+            align-items: center;
+            justify-content: center;
             background-color: #066eb7;
             border-radius: 7px;
             padding: 2px;
-            justify-content: center;
-            align-items: center;
             margin: 10px 20px;
             box-shadow: 6px 8px 10px rgba(0.3, 0.3, 0.3, 0.3);
             position: relative;
@@ -25,6 +29,9 @@
         .titre:hover {
             transform: sclae(1.05);
             box-shadow: 6px 8px 15px rgba(0.3, 0.3, 0.3, 0.5);
+        }
+        .titre img {
+            margin-right: 50px;
         }
         .titre::before {
             content: '';
@@ -40,7 +47,7 @@
         }
         h3 {
             text-align: center;
-        }s
+        }
         .titre:hover::before {
             transform: translate(-50%, -50%) scale(0);
         }
@@ -50,6 +57,7 @@
         .clientList {
             margin-left: 20px;
             background-color: #274456;
+            box-shadow: 6px 8px 10px rgba(0.3, 0.3, 0.3, 0.3);
         }
         .clientList h3 {
             color: white;
@@ -90,7 +98,7 @@
         }
         #messageLog {
             border: 1px solid #ccc;
-            height: 430px;
+            height: 460px;
             border-radius: 7px;
             overflow-y: auto;
             margin: 0 20px;
@@ -155,12 +163,35 @@
             margin-bottom: 10px;
             padding: 5px;
             border-radius: 10px;
-            background-color: #26b6b4;
+            background-color: #066eb7;
             max-width: 60%;
             clear: both;
             word-wrap: break-word;
             float: right;
             color: #fff;
+        }
+        #malagasyButton, #francaisButton,
+        #niveau1,
+        #outillageBouton, #savBouton,
+        #métallurgieBouton, #partenariatBouton,
+        #peintureBouton, #fournisseursBouton,
+        #sécuritéBouton, #recrutementBouton,
+        #travauxBouton, #contacterBouton,
+        #équipementBouton, #autresBouton, #quincaillerieBouton
+        #jardinBouton, #boutonAutre {
+            background-color: #fff;
+            color: #066eb7;
+            border: none; 
+            padding: 10px 20px;
+            text-align: center; 
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px; 
+            font-weight: bold;
+            margin-right: 10px;
+            margin-top: 7px; 
+            position: center;
+            border-radius: 5px; 
         }
         #messageLog div[data-source="client"] img,
         #messageLog div[data-source="admin"] img {
@@ -214,11 +245,16 @@
             border-radius: 20px;
             transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
         }
+        #logo {
+            width: 80px;
+            height: 40px;
+        }
     </style>
     <title>LiveChat</title>
 </head>
 <body>
     <div class="titre">
+    <img id="logo" src="./wp-content/plugins/Message/image/logo-BATPRO_200x200pxl-removebg-preview.png" alt="Rechercher">
         <h2>Discussion avec les clients</h2>
     </div>
     
