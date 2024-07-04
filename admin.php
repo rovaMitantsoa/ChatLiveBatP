@@ -81,21 +81,62 @@
             padding: 0; 
             color: black;
         }
-        #clientList li.unread {
-            font-weight: bold;
-            background-color: #8E8E8E; 
-            color: white;
-        }
-        #clientList li {
-            padding: 10px;
-            cursor: pointer;
-            border-bottom: 1px solid #ccc;
-            border-radius: 7px;
-            border: none;
-            background-color: #fff;
-            margin: 5px;
-            color: #000000;
-        }
+        /* Style général pour les éléments de la liste des clients */
+#clientList li {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+    cursor: pointer;
+    transition: background-color 0.3s, font-weight 0.3s;
+}
+
+/* Style pour les clients marqués comme non lus */
+#clientList li.unread {
+    background-color: #f9f9f9;
+    font-weight: bold;
+    color: #333;
+}
+
+/* Style pour les clients marqués comme lus */
+#clientList li.read {
+    background-color: #fff;
+    font-weight: normal;
+    color: #777;
+}
+
+/* Style pour les messages */
+.message {
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 5px;
+    position: relative;
+    transition: background-color 0.3s;
+}
+
+/* Style pour les messages non lus */
+.message.unread {
+    background-color: #e8f0fe;
+    border-left: 4px solid #4285f4;
+}
+
+/* Style pour les messages lus */
+.message.read {
+    background-color: #fff;
+    border-left: 4px solid transparent;
+}
+
+/* Style pour les nouveaux messages */
+.message.new {
+    background-color: #e1f5fe;
+    border-left: 4px solid #00acc1;
+    animation: flash 1s;
+}
+
+@keyframes flash {
+    0% { background-color: #e1f5fe; }
+    50% { background-color: #b3e5fc; }
+    100% { background-color: #e1f5fe; }
+}
+
         #messageLog {
             border: 1px solid #ccc;
             height: 460px;

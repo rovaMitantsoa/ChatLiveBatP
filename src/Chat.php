@@ -278,7 +278,7 @@ class MessageServer implements WebSocketMessageComponentInterface {
         $stmt->bindParam(':content', $content);
         $stmt->execute();
     }
-    
+
     public function onClose(ConnectionInterface $conn) {
         $this->clients->detach($conn);
         echo "Client ({$conn->resourceId}) déconnecté\n";
