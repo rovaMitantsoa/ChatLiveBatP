@@ -83,10 +83,15 @@ socket.addEventListener('message', (event) => {
     clientMessages[clientId].push({ type: messageType, content: messageContent });
 });
 
-// Fonction pour marquer les messages comme lus
 function markMessagesAsRead(clientId) {
     const clientListItem = document.querySelector(`#clientList li[data-client-id="${clientId}"]`);
     clientListItem.classList.remove('unread');
+
+    // Envoyer une demande au serveur pour mettre à jour le statut de lecture
+    socket.send(JSON.stringify({
+        updateReadStatus: true,
+        clientId: clientId
+    }));
 }
 
 // Fonction pour marquer les messages comme non lus
@@ -94,6 +99,23 @@ function markMessagesAsUnread(clientId) {
     const clientListItem = document.querySelector(`#clientList li[data-client-id="${clientId}"]`);
     clientListItem.classList.add('unread');
 }
+
+// Événement pour le clic sur un client
+function handleClientClick(event) {
+    const clientId = event.target.getAttribute('data-client-id');
+    createClientChatWindow(clientId);
+    const activeItems = document.querySelectorAll('.clientList li.active');
+    activeItems.forEach(item => item.classList.remove('active'));
+    event.target.classList.add('active');
+
+    // Marquer les messages comme lus lorsque le client est sélectionné
+    markMessagesAsRead(clientId);
+}
+
+// Assurez-vous que la fonction handleClientClick est correctement attachée
+document.querySelectorAll('#clientList li').forEach(item => {
+    item.addEventListener('click', handleClientClick);
+});
 
 // Pour la création de Zone de discussion de chaque client   
 socket.addEventListener('message', (event) => {   

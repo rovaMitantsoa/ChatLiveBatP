@@ -254,7 +254,7 @@
 </head>
 <body>
     <div class="titre">
-    <img id="logo" src="./wp-content/plugins/Message/image/logo-BATPRO_200x200pxl-removebg-preview.png" alt="Rechercher">
+    <img id="logo" src="http://localhost/ChatLive/wp-content/plugins/Message/image/logo-BATPRO_200x200pxl-removebg-preview.png" alt="Rechercher">
         <h2>Discussion avec les clients</h2>
     </div>
     
@@ -263,7 +263,7 @@
             <div class="search-container">
                 <input type="text" id="searchInput" placeholder="Rechercher un client...">
                 <button type="submit" id="searchButton">
-                    <img src="./wp-content/plugins/Message/image/recherche.png" alt="Rechercher">
+                    <img src="http://localhost/ChatLive/wp-content/plugins/Message/image/recherche.png" alt="Rechercher">
                 </button>
             </div>
         <div class="liste">
@@ -278,11 +278,11 @@
         <div class="Bouton">
             <input type="text" id="adminMessageInput" placeholder="Envoyer un message">
             <label for="adminFileInput" class="file-icon">
-                <img src="./wp-content/plugins/Message/image/fichier.png" alt="Fichier">
+                <img src="http://localhost/ChatLive/wp-content/plugins/Message/image/fichier.png" alt="Fichier">
             </label>
             <input type="file" id="adminFileInput">
             <label for="adminImageInput" class="image-icon">
-                <img src="./wp-content/plugins/Message/image/image.png" alt="Image">
+                <img src="http://localhost/ChatLive/wp-content/plugins/Message/image/image.png" alt="Image">
             </label>
             <input type="file" id="adminImageInput" accept="image/*">   
             <button class="sendAdminMessageButton" id="sendAdminMessageButton">Envoyer</button>

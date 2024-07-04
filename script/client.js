@@ -54,21 +54,21 @@ function saveMessages(messages) {
     localStorage.setItem('savedMessages', JSON.stringify(messages));
 }
 
-//  Pour charger les messages sauvegardés et pour vérifier si l'e-mail du client est sauvegardé
 window.addEventListener('load', () => {
     const savedMessages = getSavedMessages();
     const messageLog = document.getElementById('messageLog');
     messageLog.innerHTML = savedMessages.join(''); // Ajouter les messages sauvegardés au messageLog
+
     // Restaurer le nom du client s'il est sauvegardé
     userName = localStorage.getItem('userName');
 
-    // Vérifier si l'adresse e-mail du client est déjà sauvegardée
-    const savedEmail = localStorage.getItem('userEmail');
-    if (savedEmail) {
-        // Si une adresse e-mail est déjà sauvegardée, passer directement à l'étape suivante du chatbot
+    // Vérifier si la langue choisie par l'utilisateur est déjà sauvegardée
+    const savedLanguage = localStorage.getItem('language');
+    if (savedLanguage) {
+        // Si une langue est déjà sauvegardée, passer directement à l'étape suivante du chatbot
         chatbotState = ChatbotStates.AWAITING_ANSWER;
     } else {
-        // Si aucune adresse e-mail n'est sauvegardée, demander au client de choisir une langue
+        // Si aucune langue n'est sauvegardée, demander au client de choisir une langue
         initialResponse();
     }
 });
@@ -77,7 +77,8 @@ window.addEventListener('load', () => {
 const ChatbotStates = {
     INITIAL: 'INITIAL',
     AWAITING_LANGUAGE: 'AWAITING_LANGUAGE',
-    AWAITING_EMAIL: 'AWAITING_EMAIL', 
+    AWAITING_PRO_OR_PART_NAME: 'AWAITING_PRO_OR_PART_NAME', 
+    AWAITING_PROORPART_SUBMISSION : 'AWAITING_PROORPART_SUBMISSION',
     AWAITING_ANSWER: 'AWAITING_ANSWER',
     ADMIN_INTERACTION: 'ADMIN_INTERACTION'
 };
@@ -87,6 +88,7 @@ let chatbotState = ChatbotStates.INITIAL;
 
 // Fonction pour gérer la réponse du chatbot en fonction de l'état actuel
 function chatbotResponse(userMessage) {
+    console.log(chatbotState);
     let response;
     switch (chatbotState) {
         case ChatbotStates.INITIAL:
@@ -95,27 +97,17 @@ function chatbotResponse(userMessage) {
         case ChatbotStates.AWAITING_LANGUAGE:
             response = awaitingLanguageResponse(userMessage);
             break;
-        case ChatbotStates.AWAITING_EMAIL:
-            response = awaitingEmailResponse(userMessage);
+        case ChatbotStates.AWAITING_PRO_OR_PART_NAME:
+            response = awaitingProOrPartNameResponse(userMessage);
+            break;
+        case ChatbotStates.AWAITING_PROORPART_SUBMISSION:
+            response = handleProOrPartNameSubmission (userMessage);
             break;
         case ChatbotStates.AWAITING_ANSWER:
             response = awaitingAnswerResponse(userMessage);
             break;
-        case ChatbotStates.ADMIN_INTERACTION:
-            response = "Un administrateur prendra bientôt contact avec vous.";
-            break;
-        default:
-            response = "Je suis désolé, je ne comprends pas. Pouvez-vous reformuler votre question ?";
-            break;
     }
     return response;
-}
-
-function disableButton(buttonId) {
-    const button = document.getElementById(buttonId);
-    if (button) {
-        button.disabled = true;
-    }
 }
 
 // Fonction pour gérer la réponse initiale du chatbot
@@ -124,18 +116,26 @@ function initialResponse(userMessage) {
     return "Veuillez choisir une langue : <br>" +
         "<button id='malagasyButton' onclick='sendMessage(\"Malagasy\", this)'>Malagasy</button>" +
         "<button id='francaisButton' onclick='sendMessage(\"Français\", this)'>Français</button>";
-    }
+}
 
 // Fonction pour gérer la réponse lors du choix de la langue
 function awaitingLanguageResponse(userMessage) {
     const lowerCaseMessage = userMessage.toLowerCase();
-    if (lowerCaseMessage === "malagasy" || lowerCaseMessage === "français") {
+    if (lowerCaseMessage === "français" ) {
         // Si l'utilisateur a choisi une langue, passer à l'étape de saisie de l'adresse e-mail
-        chatbotState = ChatbotStates.AWAITING_EMAIL;
-        return "Veuillez choisir :" +
+        chatbotState = ChatbotStates.AWAITING_PRO_OR_PART_NAME;
+        localStorage.setItem('language', 'fr'); //Sauvegarde de la langue choisi
+        return "Veuillez choisir : <br>" +
             "<button id='niveau1' onclick='sendMessage(\"Professionnel\", this)'>Professionnel</button>" +
             "<button id='niveau1' onclick='sendMessage(\"Particulier\", this)'>Particulier</button>";
-    } else {
+    } else if (lowerCaseMessage ==="malagasy") {
+        chatbotState = ChatbotStates.AWAITING_PRO_OR_PART_NAME;
+        localStorage.setItem('language', 'mg');
+        return "Misafidiana : <br>" +
+            "<button id='niveau1' onclick='sendMessage(\"Mpiasa\", this)'>Mpiasa</button>" +
+            "<button id='niveau1' onclick='sendMessage(\"Olon-tsotra\", this)'>Olon-tsotra</button>";
+    }
+    else {
         // Si l'utilisateur n'a pas choisi une langue valide, demander à nouveau
         return "Veuillez choisir une language: <br>" +
             "<button id='malagasyButton' onclick='sendMessage(\"Malagasy\", this)'>Malagasy</button>" +
@@ -150,33 +150,94 @@ function isValidEmailOrPhone(input) {
     return emailRegex.test(input) || phoneRegex.test(input);
 }
 
-// Fonction pour gérer la réponse lors de la saisie de l'adresse e-mail
-function awaitingEmailResponse(userMessage) {
-    const email = userMessage.trim(); // Supprimer les espaces blancs inutiles
-    if (isValidEmailOrPhone(email)) {
-        // L'adresse email est valide, passer à l'étape suivante du chatbot
+//Fonction pour valider le nom (société || !société)
+function validateName(name) {
+    // Vérifie si le nom est vide
+    if (!name || name.trim() === '') {
+        return false;
+    }
+    // Si toutes les validations sont passées, retourne true
+    return true;
+}
+
+// Fonction pour gérer la réponse lors de la saisie du nom ou nom de l'entreprise
+function awaitingProOrPartNameResponse(userMessage) {
+    const lowerCaseMessage = userMessage.toLowerCase();
+    const language = localStorage.getItem('language');
+
+    if (lowerCaseMessage === "professionnel" || lowerCaseMessage === "mpiasa") {
+        chatbotState = ChatbotStates.AWAITING_PROORPART_SUBMISSION;
+        localStorage.setItem('userType', 'pro');
+        if (language === 'fr') {
+            return "Veuillez saisir le nom de votre entreprise : ";
+        } else {
+            return "Ampidiro ny anaran'ny orinasa :";
+        }
+    } else if (lowerCaseMessage === "particulier" || lowerCaseMessage === "olon-tsotra") {
+        chatbotState = ChatbotStates.AWAITING_PROORPART_SUBMISSION;
+        localStorage.setItem('userType', 'particulier');
+        if (language === 'fr') {
+            return "Veuillez saisir votre nom :";
+        } else {
+            return "Ampidiro ny anaranao :";
+        }
+    } else {
+        // Si l'utilisateur n'a pas choisi une option valide, demander à nouveau
+        if (language === 'fr') {
+            return "Veuillez choisir une option valide : <br>" +
+                "<button id='niveau1' onclick='sendMessage(\"Professionnel\", this)'>Professionnel</button>" +
+                "<button id='niveau1' onclick='sendMessage(\"Particulier\", this)'>Particulier</button>";
+        } else {
+            return "Misafidiana safidy azo antoka: <br>" +
+                "<button id='niveau1' onclick='sendMessage(\"Mpiasa\", this)'>Mpiasa</button>" +
+                "<button id='niveau1' onclick='sendMessage(\"Olon-tsotra\", this)'>Olon-tsotra</button>";
+        }
+    }
+}
+
+// Fonction pour gérer la réponse après la saisie du nom ou nom de l'entreprise
+function handleProOrPartNameSubmission(userMessage) {
+    const language = localStorage.getItem('language');
+    const userType = localStorage.getItem('userType');
+    // Sauvegarder le nom ou le nom de l'entreprise
+    if (userType === 'pro') {
+        localStorage.setItem('companyName', userMessage);
+    } else if (userType === 'particulier') {
+        localStorage.setItem('personalName', userMessage);
+    }
+    
+    if (language === 'fr') {
         chatbotState = ChatbotStates.AWAITING_ANSWER;
-        // Sauvegarder l'adresse e-mail du client dans le stockage local
-        localStorage.setItem('userEmail', email);
-        return "Contact valide. <br><br>" +
-            "Veuillez choisir une option : <br>" +
+        return "Vos coordonnées sont bien reçues. <br><br>" +
+            "Veuillez choisir ce qui vous convient : <br>" +
             "<button id='niveau1' onclick='sendMessage(\"Je cherche un produit\", this)'>Je cherche un produit</button>" +
             "<button id='niveau1' onclick='sendMessage(\"Demander des renseignements\", this)'>Demander des renseignements</button>" +
             "<button id='niveau1' onclick='sendMessage(\"Demander un devis\", this)'>Demander un devis</button>" +
             "<button id='niveau1' onclick='sendMessage(\"Détails sur un produit\", this)'>Détails sur un produit</button>" +
             "<button id='niveau1' onclick='sendMessage(\"Service après vente\", this)'>Service après vente</button>" +
-            "<button id='boutonAutre' onclick='sendMessage(\"Autres\", this)'>Autres</button>" ;
-    }
-    else {
-        // L'adresse email n'est pas valide, demander au client de saisir à nouveau
-        return "Veuillez saisir une adresse e-mail ou numéro de téléphone";
+            "<button id='boutonAutre' onclick='sendMessage(\"Autres\", this)'>Autres</button>";
+    } else {
+        chatbotState = ChatbotStates.AWAITING_ANSWER;
+        return "Voaray tsara ny mombamomba anao. <br><br>" +
+            "Misafidiana amin'izay tadiavinao eto : <br>" +
+            "<button id='niveau1' onclick='sendMessage(\"Hitady entana\", this)'>Hitady entana</button>" +
+            "<button id='niveau1' onclick='sendMessage(\"Hanontany fanazavana\", this)'>Hanontany fanazavana</button>" +
+            "<button id='niveau1' onclick='sendMessage(\"Hanontany vinavina\", this)'>Hanontany vinavina</button>" +
+            "<button id='niveau1' onclick='sendMessage(\"Antsipirian'ny entana\", this)'>Antsipirian'ny entana</button>" +
+            "<button id='niveau1' onclick='sendMessage(\"Tolotra vita varotra\", this)'>Tolotra vita varotra</button>" +
+            "<button id='boutonAutre' onclick='sendMessage(\"Hafa\", this)'>Hafa</button>";
     }
 }
 
-// Variable de contrôle pour suivre si une réponse a été envoyée
-let responseSent = false; 
-let awaitingLinkOrPhoto = false;
+// Messages prédéfinis pour les demandes de lien ou de photo
+const requestLinkOrPhotoMessageFr = "Veuillez envoyer le lien ou la photo du produit";
+const requestLinkOrPhotoMessageMg = "Mba alefaso ny rohy na sarin'ilay entana azafady";
+const requestAutreAideFr = "Bienvenue au service commercial de BATPRO. Comment pouvons-nous vous aider ?";
+const requestAutreAideMg = "Tongasoa eto amin'ny sampana varotry ny BATPRO. Inona no azo hanampiana anao ?";
+
+
 let awaitingDevis = false;
+let awaitingLinkOrPhoto = false;
 let awaitingPayement = false;
 let lieuLivraison = false;
 let autreInfo = false;
@@ -184,198 +245,227 @@ let awaitingYesNoResponse = false;
 let detailsProd = false;
 let detailYesNo = false;
 
-// Variable pour stocker le message
-const requestLinkOrPhotoMessage = "Veuillez envoyer le lien ou la photo du produit";
-const requestAutreAide = "Bienvenue au service commercial de BATPRO. Comment pouvons-nous vous aider ?";
-
 function awaitingAnswerResponse(userMessage) {
     // Convertir le message en minuscules pour une correspondance insensible à la casse
     const lowerCaseMessage = userMessage.toLowerCase();
-    // Traitement des réponses du client en fonction de ce qu'il a choisi précédemment
+    // Pour récupérer la langue choisie par le client
+    const language = localStorage.getItem('language');
     let response = '';
-    // Réinitialisation de  la variable responseSent à false à chaque réponse du client
-    responseSent = false;
-    if (!responseSent) { // Vérifier si une réponse n'a pas déjà été envoyée
-         // Si le chatbot attend un lien ou une photo pour un devis
-         if (awaitingDevis) {
-            response = "En combien de quantité ?";
-            awaitingDevis = false; // Réinitialiser le statut
-            responseSent = true; // Marquer que la réponse a été envoyée
+    let responseSent = false;
+
+    // Vérifier si une réponse n'a pas déjà été envoyée
+    if (!responseSent) {
+        // Si le chatbot attend un devis
+        if (awaitingDevis) {
+            response = (language === 'fr') ? "En combien de quantité ?" : "Firy isa ?";
+            awaitingDevis = false;
+            responseSent = true;
         } else if (awaitingLinkOrPhoto) {
-            response = "Patientez un moment, je vérifie le stock";
-            awaitingLinkOrPhoto = false; // Réinitialiser le statut
-            responseSent = true; // Marquer que la réponse a été envoyée
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            const phoneRegex = /^\+?\d{10,15}$/;
+            if (emailRegex.test(lowerCaseMessage) || phoneRegex.test(lowerCaseMessage)) {
+                response = (language === 'fr') 
+                    ? "Merci pour votre contact. Un responsable vous contactera dans les 15 minutes." 
+                    : "Misaotra tamin'ny fifandraisanao. Hisy tompon'andraikitra hiantso anao afaka 15 minitra.";
+                awaitingLinkOrPhoto = false;
+                responseSent = true;
+            } else {
+                response = (language === 'fr') 
+                    ? "Afin de vous offrir un suivi personnalisé, veuillez fournir votre contact (WhatsApp, email ou téléphone)." 
+                    : "Mba ahafahanay manara-maso anao manokana dia ataovy eto ny laharana finday na adresy mailaka anao.";
+                responseSent = true;
+            }
         } else if (awaitingPayement) {
-            response  = "Quel est votre mode de paiement? <br><br>" + 
+            response = (language === 'fr') ? "Quel est votre mode de paiement? <br><br>" +
                 "<button id='niveau1' onclick='sendMessage(\"Espèce\", this)'>Espèce</button>" +
                 "<button id='niveau1' onclick='sendMessage(\"Chèque\", this)'>Chèque</button>" +
                 "<button id='niveau1' onclick='sendMessage(\"Virement\", this)'>Virement</button>" +
-                "<button id='niveau1' onclick='sendMessage(\"Autres\", this)'>Autres</button>" ;
+                "<button id='niveau1' onclick='sendMessage(\"Autres\", this)'>Autres</button>"
+                : "Inona no fomba fandoavanao vola? <br><br>" +
+                "<button id='niveau1' onclick='sendMessage(\"Vola\", this)'>Vola</button>" +
+                "<button id='niveau1' onclick='sendMessage(\"Seka\", this)'>Taratasim-bola</button>" +
+                "<button id='niveau1' onclick='sendMessage(\"Famindrana\", this)'>Famindrana</button>" +
+                "<button id='niveau1' onclick='sendMessage(\"Hafa\", this)'>Hafa</button>";
             awaitingPayement = false;
             responseSent = true;
-        } else if (lieuLivraison){
-            response = "Veuillez indiquer votre nom, ainsi que la date et le lieu de livraison souhaités";
+        } else if (lieuLivraison) {
+            response = (language === 'fr') ? "Veuillez indiquer la date et le lieu de livraison souhaités" :
+                "Daty sy toerana hanaterana azy azafady";
             lieuLivraison = false;
             responseSent = true;
         } else if (autreInfo) {
-            response = "Souhaitez-vous rajouter d'autres informations ? <br><br>" + 
+            response = (language === 'fr') ? "Souhaitez-vous rajouter d'autres informations ? <br><br>" +
                 "<button id='niveau1' onclick='sendMessage(\"Oui\", this)'>Oui</button>" +
-                "<button id='niveau1' onclick='sendMessage(\"Non\", this)'>Non</button>" ;
+                "<button id='niveau1' onclick='sendMessage(\"Non\", this)'>Non</button>"
+                : "Mbola mila fanazavana hafa ve ianao? <br><br>" +
+                "<button id='niveau1' onclick='sendMessage(\"Eny\", this)'>Eny</button>" +
+                "<button id='niveau1' onclick='sendMessage(\"Tsia\", this)'>Tsia</button>";
             autreInfo = false;
             responseSent = true;
-        } else if(awaitingYesNoResponse) {
-            if (lowerCaseMessage === "oui") {
-                response = "En quoi d'autre puis-je vous aider ?";
-            } else if (lowerCaseMessage === "non") {
-                response = "Notre service commercial vous enverra un devis par e-mail sous peu. Merci de nous avoir contacté. A bientôt !";
+        } else if (awaitingYesNoResponse) {
+            if (lowerCaseMessage === "oui" || lowerCaseMessage === "eny") {
+                response = (language === 'fr') ? "En quoi d'autre puis-je vous aider ?" : "Inona no mety mbola azo hanampiana anao?";
+            } else if (lowerCaseMessage === "non" || lowerCaseMessage === "tsia") {
+                response = (language === 'fr') ? "Notre service commercial vous enverra un devis par e-mail sous peu. Merci de nous avoir contacté. A bientôt !"
+                    : "Alefan'ny sampana ara-barotra aminao amin'ny alalan'ny adresy mailaka ny vinavina. Misaotra anao nifandray taminay. Amin'ny manaraka indray !";
             }
             awaitingYesNoResponse = false;
             responseSent = true;
-        } else if(detailsProd) {
-            response = "Avez-vous eu la fiche technique correspondante ? <br><br>"+ 
-            "<button id='niveau1' onclick='sendMessage(\"Oui\", this)'>Oui</button>" +
-            "<button id='niveau1' onclick='sendMessage(\"Non\", this)'>Non</button>" ;
+        } else if (detailsProd) {
+            response = (language === 'fr') ? "Avez-vous eu la fiche technique correspondante ? <br><br>" +
+                "<button id='niveau1' onclick='sendMessage(\"Oui\", this)'>Oui</button>" +
+                "<button id='niveau1' onclick='sendMessage(\"Non\", this)'>Non</button>"
+                : "Anananao ve ny taratasy ara-teknika mifandray amin'io ? <br><br>" +
+                "<button id='niveau1' onclick='sendMessage(\"Eny\", this)'>Eny</button>" +
+                "<button id='niveau1' onclick='sendMessage(\"Tsia\", this)'>Tsia</button>";
             detailsProd = false;
             responseSent = true;
         } else if (detailYesNo) {
-            if (lowerCaseMessage === "oui") {
+            if (lowerCaseMessage === "oui" || lowerCaseMessage === "eny") {
                 responseSent = true;
-            } else if (lowerCaseMessage === "non") {
-                response = "Quelle informations voudriez-vous avoir ?";
+            } else if (lowerCaseMessage === "non" || lowerCaseMessage === "tsia") {
+                response = (language === 'fr') ? "Quelle informations voudriez-vous avoir ?"
+                    : "Inona ny fanampim-panazavana mbola tinao ho fantatra ?";
             }
             detailYesNo = false;
             responseSent = true;
         }
 
         //1
-        else if (lowerCaseMessage === "je cherche un produit") {
-                response = "Quels produits?<br>" +
+        else if (lowerCaseMessage === "je cherche un produit" || lowerCaseMessage === "hitady entana") {
+            response = (language === 'fr') ? "Quels produits?<br>" +
                 "<button id='outillageBouton' onclick='sendMessage(\"Outillage\", this)'>Outillage</button>" +
                 "<button id='métallurgieBouton' onclick='sendMessage(\"Métallurgie\", this)'>Métallurgie</button>" +
                 "<button id='peintureBouton' onclick='sendMessage(\"Peinture & étanchéité\", this)'>Peinture & étanchéité</button>" +
                 "<button id='sécuritéBouton' onclick='sendMessage(\"Sécurité incendie\", this)'>Sécurité incendie</button>" +
                 "<button id='travauxBouton' onclick='sendMessage(\"Travaux publics & génie civil\", this)'>Travaux publics & génie civil</button>" +
-                "<button id='équipementBouton' onclick='sendMessage(\"Équipement électrique & soudage\", this)'>Équipement électrique & soudage </button>" ;
-            } else if (lowerCaseMessage === "outillage") {
-                response = requestLinkOrPhotoMessage;
-                disableButton('outillageButton');
-                awaitingLinkOrPhoto = true;
-                responseSent = true; // Marquer que la réponse a été envoyée
-            } else if (lowerCaseMessage === "métallurgie") {
-                response = requestLinkOrPhotoMessage;
-                disableButton('métallurgieBouton');
-                awaitingLinkOrPhoto = true;
-                responseSent = true; // Marquer que la réponse a été envoyée
-            } else if (lowerCaseMessage === "peinture & étanchéité") {
-                response = requestLinkOrPhotoMessage;
-                disableButton('peintureBouton');
-                awaitingLinkOrPhoto = true;
-                responseSent = true; // Marquer que la réponse a été envoyée
-            }
-            else if (lowerCaseMessage === "sécurité incendie") {
-                response = requestLinkOrPhotoMessage;
-                disableButton('sécuritéBouton');
-                awaitingLinkOrPhoto = true;
-                responseSent = true; // Marquer que la réponse a été envoyée
-            }
-            else if (lowerCaseMessage === "travaux publics & génie civil") {
-                response = requestLinkOrPhotoMessage;
-                disableButton('travauxBouton');
-                awaitingLinkOrPhoto = true;
-                responseSent = true; // Marquer que la réponse a été envoyée
-            }
-            else if (lowerCaseMessage === "équipement électrique & soudage") {
-                response = requestLinkOrPhotoMessage;
-                disableButton('équipementBouton');
-                awaitingLinkOrPhoto = true;
-                responseSent = true; // Marquer que la réponse a été envoyée
-            }
-            
-            //2 
-            else if (lowerCaseMessage === "demander des renseignements") {
-                response = "Quels renseignements?<br>"+
+                "<button id='équipementBouton' onclick='sendMessage(\"Équipement électrique & soudage\", this)'>Équipement électrique & soudage </button>"
+                : "Ireto avy ny entana afaka hanampiana anao :<br>" +
+                "<button id='outillageBouton' onclick='sendMessage(\"Fitaovana\", this)'>Fitaovana</button>" +
+                "<button id='métallurgieBouton' onclick='sendMessage(\"Metaly\", this)'>Metaly</button>" +
+                "<button id='peintureBouton' onclick='sendMessage(\"Peinture & étanchéité\", this)'>Loko sy étanchéité</button>" +
+                "<button id='sécuritéBouton' onclick='sendMessage(\"Fiarovana amin'ny afo\", this)'>Fiarovana amin'ny afo</button>" +
+                "<button id='travauxBouton' onclick='sendMessage(\"Asa vaventy & injeniera sivily\", this)'>Asa vaventy & injeniera sivily</button>" +
+                "<button id='équipementBouton' onclick='sendMessage(\"Fitaovana elektrika sy soudage\", this)'>Fitaovana elektrika sy soudage </button>";
+            responseSent = true;
+        } else if (lowerCaseMessage === "outillage" || lowerCaseMessage === "fitaovana") {
+            response = (language === 'fr') ? requestLinkOrPhotoMessageFr : requestLinkOrPhotoMessageMg;
+            awaitingLinkOrPhoto = true;
+            responseSent = true;
+        } else if (lowerCaseMessage === "métallurgie" || lowerCaseMessage === "metaly") {
+            response = (language === 'fr') ? requestLinkOrPhotoMessageFr : requestLinkOrPhotoMessageMg;
+            awaitingLinkOrPhoto = true;
+            responseSent = true;
+        } else if (lowerCaseMessage === "peinture & étanchéité" || lowerCaseMessage === "loko sy étanchéité") {
+            response = (language === 'fr') ? requestLinkOrPhotoMessageFr : requestLinkOrPhotoMessageMg;
+            awaitingLinkOrPhoto = true;
+            responseSent = true;
+        } else if (lowerCaseMessage === "sécurité incendie" || lowerCaseMessage === "fiarovana amin'ny afo") {
+            response = (language === 'fr') ? requestLinkOrPhotoMessageFr : requestLinkOrPhotoMessageMg;
+            awaitingLinkOrPhoto = true;
+            responseSent = true;
+        } else if (lowerCaseMessage === "travaux publics & génie civil" || lowerCaseMessage === "asa vaventy & injeniera sivily") {
+            response = (language === 'fr') ? requestLinkOrPhotoMessageFr : requestLinkOrPhotoMessageMg;
+            awaitingLinkOrPhoto = true;
+            responseSent = true;
+        } else if (lowerCaseMessage === "équipement électrique & soudage" || lowerCaseMessage === "fitaovana elektrika sy soudage") {
+            response = (language === 'fr') ? requestLinkOrPhotoMessageFr : requestLinkOrPhotoMessageMg;
+            awaitingLinkOrPhoto = true;
+            responseSent = true;
+        } else if (lowerCaseMessage === "autre" || lowerCaseMessage === "hafa") {
+            response = (language === 'fr') ? requestAutreAideFr : requestAutreAideMg;
+            awaitingYesNoResponse = true;
+            responseSent = true;
+        }
+
+        //2 
+        else if (lowerCaseMessage === "demander des renseignements" || lowerCaseMessage === "hanontany fanazavana") {
+            response = (language === 'fr') ? "Quels renseignements?<br>"+
                 "<button id='savBouton' onclick='sendMessage(\"SAV\", this)'>SAV</button>" +
                 "<button id='partenariatBouton' onclick='sendMessage(\"Partenariat\", this)'>Partenariat</button>" +
                 "<button id='fournisseursBouton' onclick='sendMessage(\"Fournisseurs\", this)'>Fournisseurs</button>" +
                 "<button id='recrutementBouton' onclick='sendMessage(\"Recrutement\", this)'>Recrutement</button>" +
                 "<button id='contacterBouton' onclick='sendMessage(\"Contacter magasins\", this)'>Contacter magasins</button>" +
-                "<button id='boutonAutre' onclick='sendMessage(\"Autres\", this)'>Autres </button>" ;
-            } else if (lowerCaseMessage === "sav") {
-                response = requestLinkOrPhotoMessage;
-                disableButton('savBouton');                
-                awaitingLinkOrPhoto = true;
-                responseSent = true; // Marquer que la réponse a été envoyée
-            }  else if (lowerCaseMessage === "partenariat") {
-                response = requestLinkOrPhotoMessage;
-                disableButton('partenariatBouton');                
-                awaitingLinkOrPhoto = true;
-                responseSent = true; // Marquer que la réponse a été envoyée
-            } else if (lowerCaseMessage === "fournisseurs") {
-                response = requestLinkOrPhotoMessage;
-                disableButton('fournisseursBouton');                
-                awaitingLinkOrPhoto = true;
-                responseSent = true; // Marquer que la réponse a été envoyée
-            } else if (lowerCaseMessage === "recrutement") {
-                response = requestLinkOrPhotoMessage;
-                disableButton('recrutementBouton');                
-                awaitingLinkOrPhoto = true;
-                responseSent = true; // Marquer que la réponse a été envoyée
-            } else if (lowerCaseMessage === "contacter magasins") {
-                response = requestLinkOrPhotoMessage;
-                disableButton('contacterBouton');                
-                awaitingLinkOrPhoto = true;
-                responseSent = true; // Marquer que la réponse a été envoyée
-            } else if (lowerCaseMessage === "autres") {
-                response = requestAutreAide;
-                disableButton('boutonAutre');                
-                responseSent = true; // Marquer que la réponse a été envoyée
-            }
-            
-            //3
-            else if (lowerCaseMessage === "demander un devis") {
-                response = requestLinkOrPhotoMessage;
-                awaitingDevis = true;
-                awaitingPayement = true;
-                responseSent = true; // Marquer que la réponse a été envoyée
-                lieuLivraison = true;
-                autreInfo = true;
-                awaitingYesNoResponse = true;
-                disableButton('devisButton');
-                disableButton('lieuLivraisonButton');
-                disableButton('autreInfoButton');
-            }
-
-            //4
-            if (lowerCaseMessage === "détails sur un produit") {
-                response = requestLinkOrPhotoMessage;
-                detailsProd = true;
-                detailYesNo= true;
-                responseSent = true; // Marquer que la réponse a été envoyée
-                disableButton('detailsButton');
-            }
-
-            //5 
-            if (lowerCaseMessage === "service après vente") {
-                response = "" +
-                    "<button id='savBouton' onclick='sendMessage(\"Réclamation\", this)'>Réclamation</button>" +
-                    "<button id='partenariatBouton' onclick='sendMessage(\"Réparer un produit\", this)'>Réparer un produit</button>" +
-                    "<button id='fournisseursBouton' onclick='sendMessage(\"Chercher des pièces détachées\", this)'>Chercher des pièces détachées</button>" +
-                    "<button id='recrutementBouton' onclick='sendMessage(\"Garantie\", this)'>Garantie</button>" +
-                    "<button id='contacterBouton' onclick='sendMessage(\"Récupérer un produit\", this)'>Récupérer un produit</button>" +
-                    "<button id='boutonAutre' onclick='sendMessage(\"Autres\", this)'>Autres</button>" ;
-                responseSent = true; // Marquer que la réponse a été envoyée
-                
-            }
-            //6
-            if (lowerCaseMessage === "autres") {
-                response = requestAutreAide;
-                responseSent = true;
-                disableButton('autresButton');
-            }
+                "<button id='boutonAutre' onclick='sendMessage(\"Autres\", this)'>Autres </button>" 
+            : "Inona no hilanao fanazavana?<br>"+
+                "<button id='savBouton' onclick='sendMessage(\"SAV\", this)'>SAV</button>" +
+                "<button id='partenariatBouton' onclick='sendMessage(\"Fiaraha-miasa\", this)'>Fiaraha-miasa</button>" +
+                "<button id='fournisseursBouton' onclick='sendMessage(\"Mpamatsy\", this)'>Mpamatsy</button>" +
+                "<button id='recrutementBouton' onclick='sendMessage(\"Hitady asa\", this)'>Hitady asa</button>" +
+                "<button id='contacterBouton' onclick='sendMessage(\"Fifandraisana\", this)'>Fifandraisana</button>" +
+                "<button id='boutonAutre' onclick='sendMessage(\"Hafa\", this)'>Hafa </button>" 
+        } else if (lowerCaseMessage === "sav" || lowerCaseMessage === "sav") {
+            response = (language === 'fr') ? requestLinkOrPhotoMessageFr : requestLinkOrPhotoMessageMg;
+            awaitingLinkOrPhoto = true;
+            responseSent = true; // Marquer que la réponse a été envoyée
+        }  else if (lowerCaseMessage === "partenariat" || lowerCaseMessage === "fiaraha-miasa") {
+            response = (language === 'fr') ? requestLinkOrPhotoMessageFr : requestLinkOrPhotoMessageMg;
+            awaitingLinkOrPhoto = true;
+            responseSent = true; // Marquer que la réponse a été envoyée
+        } else if (lowerCaseMessage === "fournisseurs" || lowerCaseMessage === "mpamatsy") {
+            response = (language === 'fr') ? requestLinkOrPhotoMessageFr : requestLinkOrPhotoMessageMg;
+            awaitingLinkOrPhoto = true;
+            responseSent = true; // Marquer que la réponse a été envoyée
+        } else if (lowerCaseMessage === "recrutement" || lowerCaseMessage === "hitady asa") {
+            response = (language === 'fr') ? requestLinkOrPhotoMessageFr : requestLinkOrPhotoMessageMg;
+            awaitingLinkOrPhoto = true;
+            responseSent = true; // Marquer que la réponse a été envoyée
+        } else if (lowerCaseMessage === "contacter magasins" || lowerCaseMessage === "fifandraisana") {
+            response = (language === 'fr') ? requestLinkOrPhotoMessageFr : requestLinkOrPhotoMessageMg;
+            awaitingLinkOrPhoto = true;
+            responseSent = true; // Marquer que la réponse a été envoyée
+        } else if (lowerCaseMessage === "autres" || lowerCaseMessage === "hafa") {
+            response = requestAutreAide;
+            responseSent = true; // Marquer que la réponse a été envoyée
         }
-        return response;
-}
+    }
 
+    //3
+    if (lowerCaseMessage === "demander un devis" || lowerCaseMessage === "hanontany vinavina") {
+        response = (language === 'fr') ? requestLinkOrPhotoMessageFr : requestLinkOrPhotoMessageMg;
+        awaitingDevis = true;
+        awaitingPayement = true;
+        responseSent = true; // Marquer que la réponse a été envoyée
+        lieuLivraison = true;
+        autreInfo = true;
+        awaitingYesNoResponse = true;
+    }
+
+    //4
+    if (lowerCaseMessage === "détails sur un produit" || lowerCaseMessage === "antsipirian'ny entana") {
+        response = (language === 'fr') ? requestLinkOrPhotoMessageFr : requestLinkOrPhotoMessageMg;
+        detailsProd = true;
+        detailYesNo= true;
+        responseSent = true; // Marquer que la réponse a été envoyée
+    }
+
+    //5 
+    if (lowerCaseMessage === "service après vente" || lowerCaseMessage === "tolotra vita varotra") {
+        response = (language === 'fr') ? "" +
+            "<button id='savBouton' onclick='sendMessage(\"Réclamation\", this)'>Réclamation</button>" +
+            "<button id='partenariatBouton' onclick='sendMessage(\"Réparer un produit\", this)'>Réparer un produit</button>" +
+            "<button id='fournisseursBouton' onclick='sendMessage(\"Chercher des pièces détachées\", this)'>Chercher des pièces détachées</button>" +
+            "<button id='recrutementBouton' onclick='sendMessage(\"Garantie\", this)'>Garantie</button>" +
+            "<button id='contacterBouton' onclick='sendMessage(\"Récupérer un produit\", this)'>Récupérer un produit</button>" +
+            "<button id='boutonAutre' onclick='sendMessage(\"Autres\", this)'>Autres</button>" 
+            : "" +
+            "<button id='savBouton' onclick='sendMessage(\"Fanitsiana\", this)'>Fanitsiana</button><br>" +
+            "<button id='partenariatBouton' onclick='sendMessage(\"Hanamboatra entana\", this)'>Hanamboatra entana</button>" +
+            "<button id='fournisseursBouton' onclick='sendMessage(\"Hitady piesy antsinjarany\", this)'>Hitady piesy antsinjarany</button>" +
+            "<button id='recrutementBouton' onclick='sendMessage(\"Antoka\", this)'>Antoka</button>" +
+            "<button id='contacterBouton' onclick='sendMessage(\"Haka entana\", this)'>Haka entana</button>" +
+            "<button id='boutonAutre' onclick='sendMessage(\"Hafa\", this)'>Hafa</button>" ;
+        responseSent = true;
+    }
+
+    //6
+    if (lowerCaseMessage === "autres" || lowerCaseMessage === "hafa") {
+        response = (language === 'fr') ? requestAutreAideFr : requestAutreAideMg;
+        responseSent = true;
+    }
+    // Afficher la réponse
+    return response;
+}
 
 // Fonction pour envoyer le message à l'admin
 function sendMessage(message, button) {

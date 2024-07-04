@@ -32,12 +32,17 @@ class MessageServer implements WebSocketMessageComponentInterface {
         }
     }
 
+    public function deleteEmptyMessages() {
+        $stmt = $this->pdo->prepare("DELETE FROM message WHERE content = ''");
+        $stmt->execute();
+    }
+
     public function onOpen(ConnectionInterface $conn) {
         // Récupérer l'identifiant unique du client à partir des paramètres de l'URL
         $queryParams = $conn->httpRequest->getUri()->getQuery();
         parse_str($queryParams, $params);
         $clientId = isset($params['clientId']) ? $params['clientId'] : null;
-
+    
         // Si un identifiant est présent, utilisez-le pour identifier le client
         if ($clientId !== null) {
             // Utiliser l'ID du client comme adresse e-mail
@@ -63,29 +68,52 @@ class MessageServer implements WebSocketMessageComponentInterface {
                 // Enregistrer l'ID dans la session
                 $_SESSION['admin_id'] = $this->lastClientId;
             }
-        }    
+        }
+    
+        // Supprimer les messages vides
+        $this->deleteEmptyMessages();
+
+        // Ajouter le statut de lecture des messages à la réponse
+        $stmt = $this->pdo->prepare("
+            SELECT DISTINCT receiver_id, read_status 
+            FROM message 
+            WHERE receiver_id = :user_id
+        ");
+        $stmt->bindParam(':user_id', $userId);
+        $stmt->execute();
+        $readStatuses = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        // Envoyer les messages et le statut de lecture au client ou à l'administrateur
+        foreach ($readStatuses as $status) {
+            $statusData = [
+                'clientId' => $status['receiver_id'],
+                'readStatus' => $status['read_status']
+            ];
+            $conn->send(json_encode($statusData));
+        }
+        
         // Insérer les données de l'utilisateur dans la base de données
         $userId = $clientId;
         $userType = isset($_SESSION['admin_id']) ? 'admin' : 'client';
-        // Insérer les données dans la base de données
         $stmt = $this->pdo->prepare("INSERT INTO user_connections (user_id, user_type, email) VALUES (:user_id, :user_type, :email)");
         $stmt->bindParam(':user_id', $userId);
         $stmt->bindParam(':user_type', $userType);
         $stmt->bindParam(':email', $email);
         $stmt->execute();           
+    
+        // Récupérer les messages pour le client ou l'administrateur
         $stmt = $this->pdo->prepare("SELECT * FROM message WHERE (sender_id = :user_id OR receiver_id = :user_id) AND sender_id != receiver_id");
         $stmt->bindParam(':user_id', $userId);
         $stmt->execute();
         $messages = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-
-        
+    
         // Tableau pour stocker les messages par expéditeur et destinataire
         $conversation = [];
         foreach ($messages as $message) {
             $senderId = $message['sender_id'];
             $receiverId = $message['receiver_id'];
             $content = $message['content'];
-        
+    
             // Vérifier si l'expéditeur est l'administrateur ou le client
             if ($senderId == 1) {
                 // Si l'expéditeur est l'administrateur, envoyer le message au client
@@ -119,11 +147,12 @@ class MessageServer implements WebSocketMessageComponentInterface {
                 $conversation[$senderId][$receiverId] = [];
             }
             $conversation[$senderId][$receiverId][] = $content;
-        }     
-        // Envoi du message de connexion au serveur
+        }
+    
+        // Ajouter la connexion à la liste des clients
         $this->clients->attach($conn);
         echo "Client connecté ({$userId})\n";
-    }
+    }    
     
     public function onMessage(ConnectionInterface $from, $msg) {
         // Initialisation de la session si ce n'est pas déjà fait
@@ -131,9 +160,14 @@ class MessageServer implements WebSocketMessageComponentInterface {
             session_start();
         }
         $message = json_decode($msg, true);
-
-         // Gérer les messages envoyés par le chatbot
-         if (isset($message['adminMessage'])) {
+    
+        // Nettoyage des espaces dans le contenu du message
+        if (isset($message['content'])) {
+            $message['content'] = trim($message['content']);
+        }
+    
+        // Gérer les messages envoyés par le chatbot
+        if (isset($message['adminMessage'])) {
             // Gérer les messages destinés au client
             $clientConnection = $this->getClientConnection($message['clientId']);
             if ($clientConnection !== null) {
@@ -141,20 +175,20 @@ class MessageServer implements WebSocketMessageComponentInterface {
                 $senderId = 1; // ID de l'administrateur (chatbot)
                 $receiverId = $message['clientId']; // ID du client
                 $content = $message['content'];
-        
+    
                 // Enregistrer le message dans la base de données
                 $stmt = $this->pdo->prepare("INSERT INTO message (sender_id, receiver_id, content) VALUES (:sender_id, :receiver_id, :content)");
                 $stmt->bindParam(':sender_id', $senderId);
                 $stmt->bindParam(':receiver_id', $receiverId);
                 $stmt->bindParam(':content', $content);
                 $stmt->execute();
-        
+    
                 // Envoyer le message au client
                 $clientConnection->send(json_encode([
                     'adminMessage' => 'Admin',
                     'content' => $content
                 ]));
-        
+    
                 // Envoyer le message à l'administrateur également
                 $adminConnection = $this->getAdminConnection(); // Récupérer la connexion de l'administrateur
                 if ($adminConnection !== null) {
@@ -166,6 +200,21 @@ class MessageServer implements WebSocketMessageComponentInterface {
                 }
             } 
         }
+    
+        // Vérifier si le message est une demande de mise à jour de l'état de lecture
+        if (isset($message['updateReadStatus']) && $message['updateReadStatus'] === true) {
+            $clientId = $message['clientId'];
+            $adminId = $from->resourceId;
+    
+            // Mettre à jour le statut de lecture des messages
+            $stmt = $this->pdo->prepare("UPDATE message SET read_status = 1 WHERE receiver_id = :client_id AND read_status = 0");
+            $stmt->bindParam(':client_id', $clientId);
+            $stmt->execute();
+    
+            // Répondre à l'administrateur pour indiquer que la mise à jour a réussi
+            $from->send(json_encode(['updateReadStatus' => true, 'clientId' => $clientId]));
+        }
+    
         if (isset($message['type']) && $message['type'] === 'image') {
             // Envoyer l'image à l'administrateur sauf si elle provient de l'administrateur lui-même
             if ($from->resourceId !== 1) {
@@ -183,8 +232,7 @@ class MessageServer implements WebSocketMessageComponentInterface {
             }
             // Envoi également l'image à l'expéditeur lui-même
             $from->send(json_encode($message));           
-        }
-        elseif (isset($message['toAdmin']) && $message['toAdmin'] === true) {
+        } elseif (isset($message['toAdmin']) && $message['toAdmin'] === true) {
             // Gérer les messages destinés à l'administrateur
             $adminConnection = $this->getAdminConnection();
             if ($adminConnection !== null) {
@@ -195,8 +243,7 @@ class MessageServer implements WebSocketMessageComponentInterface {
                 ];
                 $adminConnection->send(json_encode($messageWithClientId));
             }           
-        }
-        elseif (isset($message['toClient']) && $message['toClient'] === true) {
+        } elseif (isset($message['toClient']) && $message['toClient'] === true) {
             // Gérer les messages destinés aux clients
             $clientConnection = $this->getClientConnection($message['clientId']);
             if ($clientConnection !== null) {
@@ -206,8 +253,7 @@ class MessageServer implements WebSocketMessageComponentInterface {
                 ];
                 $clientConnection->send(json_encode($messageWithAdmin));
             }    
-        }
-        elseif (isset($message['fileToClient']) && $message['fileToClient'] === true) {
+        } elseif (isset($message['fileToClient']) && $message['fileToClient'] === true) {
             // Gérer les fichiers envoyés aux clients
             $clientConnection = $this->getClientConnection($message['clientId']);
             if ($clientConnection !== null && isset($message['fileType']) && $message['fileType'] === 'text/plain') {
@@ -220,18 +266,19 @@ class MessageServer implements WebSocketMessageComponentInterface {
                 ]));        
             }
         }
+    
         // Enregistrement du message de l'administrateur dans la base de données
         $senderId = ($from->resourceId == 1) ? $_SESSION['admin_id'] : $from->resourceId;
         $receiverId = isset($message['clientId']) ? $message['clientId'] : 1; // Par défaut, l'admin est le destinataire
-        $content = isset($message['content']) ? $message['content'] : '';
-
+        $content = isset($message['content']) ? trim($message['content']) : ''; // Nettoyer le contenu
+    
         $stmt = $this->pdo->prepare("INSERT INTO message (sender_id, receiver_id, content) VALUES (:sender_id, :receiver_id, :content)");
         $stmt->bindParam(':sender_id', $senderId);
         $stmt->bindParam(':receiver_id', $receiverId);
         $stmt->bindParam(':content', $content);
         $stmt->execute();
-    }  
-
+    }
+    
     public function onClose(ConnectionInterface $conn) {
         $this->clients->detach($conn);
         echo "Client ({$conn->resourceId}) déconnecté\n";
