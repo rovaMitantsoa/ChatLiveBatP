@@ -72,71 +72,30 @@
             font-size: 25px;
             font-weight: bold;
         }
-        .liste {
-            overflow-y:auto;
-            height: 29rem;
-        }
         #clientList {
             list-style-type: none;
             padding: 0; 
             color: black;
         }
-        /* Style général pour les éléments de la liste des clients */
-#clientList li {
-    padding: 10px;
-    border-bottom: 1px solid #ddd;
-    cursor: pointer;
-    transition: background-color 0.3s, font-weight 0.3s;
-}
-
-/* Style pour les clients marqués comme non lus */
-#clientList li.unread {
-    background-color: #f9f9f9;
-    font-weight: bold;
-    color: #333;
-}
-
-/* Style pour les clients marqués comme lus */
-#clientList li.read {
-    background-color: #fff;
-    font-weight: normal;
-    color: #777;
-}
-
-/* Style pour les messages */
-.message {
-    padding: 10px;
-    border-radius: 5px;
-    margin-bottom: 5px;
-    position: relative;
-    transition: background-color 0.3s;
-}
-
-/* Style pour les messages non lus */
-.message.unread {
-    background-color: #e8f0fe;
-    border-left: 4px solid #4285f4;
-}
-
-/* Style pour les messages lus */
-.message.read {
-    background-color: #fff;
-    border-left: 4px solid transparent;
-}
-
-/* Style pour les nouveaux messages */
-.message.new {
-    background-color: #e1f5fe;
-    border-left: 4px solid #00acc1;
-    animation: flash 1s;
-}
-
-@keyframes flash {
-    0% { background-color: #e1f5fe; }
-    50% { background-color: #b3e5fc; }
-    100% { background-color: #e1f5fe; }
-}
-
+        #clientList li.unread {
+            font-weight: bold;
+            background-color: #8E8E8E; 
+            color: white;
+        }
+        #clientList li {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #ccc;
+            border-radius: 7px;
+            border: none;
+            background-color: #fff;
+            margin: 5px;
+            color: #000000;
+        }
+        .liste {
+            overflow-y:auto;
+            height: 29rem;
+        }
         #messageLog {
             border: 1px solid #ccc;
             height: 460px;
@@ -295,18 +254,18 @@
 </head>
 <body>
     <div class="titre">
-    <img id="logo" src="http://localhost/ChatLive/wp-content/plugins/Message/image/logo-BATPRO_200x200pxl-removebg-preview.png" alt="Rechercher">
+    <img id="logo" src="./wp-content/plugins/Message/image/logo-BATPRO_200x200pxl-removebg-preview.png" alt="Rechercher">
         <h2>Discussion avec les clients</h2>
     </div>
     
     <div class="clientList">
         <h3>Clients connectés</h3>
-            <div class="search-container">
-                <input type="text" id="searchInput" placeholder="Rechercher un client...">
-                <button type="submit" id="searchButton">
-                    <img src="http://localhost/ChatLive/wp-content/plugins/Message/image/recherche.png" alt="Rechercher">
-                </button>
-            </div>
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Rechercher un client...">
+            <button type="submit" id="searchButton">
+                <img src="./wp-content/plugins/Message/image/recherche.png" alt="Rechercher">
+            </button>
+        </div>
         <div class="liste">
             <ul id="clientList"></ul>
         </div>
@@ -319,18 +278,69 @@
         <div class="Bouton">
             <input type="text" id="adminMessageInput" placeholder="Envoyer un message">
             <label for="adminFileInput" class="file-icon">
-                <img src="http://localhost/ChatLive/wp-content/plugins/Message/image/fichier.png" alt="Fichier">
+                <img src="./wp-content/plugins/Message/image/fichier.png" alt="Fichier">
             </label>
             <input type="file" id="adminFileInput">
             <label for="adminImageInput" class="image-icon">
-                <img src="http://localhost/ChatLive/wp-content/plugins/Message/image/image.png" alt="Image">
+                <img src="./wp-content/plugins/Message/image/image.png" alt="Image">
             </label>
-            <input type="file" id="adminImageInput" accept="image/*">   
+            <input type="file" id="adminImageInput" accept="image/*">
             <button class="sendAdminMessageButton" id="sendAdminMessageButton">Envoyer</button>
+
+            <form id="fileUploadForm" enctype="multipart/form-data">
+                <input type="file" id="adminFileInput" name="file">
+                <button type="submit">Upload</button>
+            </form>
         </div>
     </div>
 
-    <!-- <script src="./wp-content/plugins/Message/script/admin.js"></script> -->
-    
+<!--<script src="/script/admin.js"></script>-->
+<!--pour l'upload-->
+<script>
+        document.getElementById('fileUploadForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData();
+            const fileInput = document.getElementById('adminFileInput');
+            if (fileInput.files.length > 0) {
+                formData.append('file', fileInput.files[0]);
+
+                fetch('upload.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Success:', data);
+
+                    // Ajoutez le lien de téléchargement dans le messageLog
+                    const fileLink = document.createElement('a');
+                    fileLink.href = data.filePath;
+                    fileLink.textContent = `Download ${data.fileName}`;
+                    fileLink.download = data.fileName;
+                    fileLink.style.display = 'block'; 
+
+                    // Créer une div pour le message
+                    const messageDiv = document.createElement('div');
+                    messageDiv.setAttribute('data-source', 'admin'); 
+                    messageDiv.classList.add('message'); // Assurez-vous d'utiliser les styles définis dans CSS
+                    messageDiv.appendChild(fileLink);
+
+                    // Ajouter le message à la zone de discussion
+                    const messageLog = document.getElementById('messageLog');
+                    messageLog.appendChild(messageDiv);
+                    messageLog.scrollTop = messageLog.scrollHeight; // Pour faire défiler jusqu'au bas
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                });
+            }
+        });
+    </script>
 </body>
 </html>

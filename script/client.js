@@ -9,32 +9,59 @@ socket.addEventListener('open', (event) => {
     console.log('WebSocket connection opened:', event);
 });
 
-// Affiche les images et les messages de l'admin ou du client dans la zone de discussion
+
+// Écouter les messages du serveur WebSocket
 socket.addEventListener('message', (event) => {
     const data = JSON.parse(event.data);
     const adminMessage = data.adminMessage;
     const messageType = data.type;
     const messageContent = data.content;
+    const filePath = data.filePath; // Ajouté pour les fichiers
+    const fileName = data.fileName; // Ajouté pour les fichiers
 
-    // Vérifier le type du message
-    if (messageType === 'image') {
-        console.log("Received image content:", messageContent);// Vérifiez le contenu de l'image dans la console
+    const messageLog = document.getElementById('messageLog');
+
+    // Vérifier si le message est un fichier et provient de l'administrateur
+    if (messageType === 'file' && adminMessage) {
+        const fileLink = document.createElement('a');
+        fileLink.href = filePath;
+        fileLink.textContent = `${fileName}`;
+        fileLink.download = fileName;
+        fileLink.target = '_blank'; // Ouvre le lien dans un nouvel onglet
+
+        // Créer un div pour contenir le lien de téléchargement
+        const fileDiv = document.createElement('div');
+        fileDiv.classList.add('message');
+        fileDiv.setAttribute('data-source', 'client');
+        fileDiv.appendChild(fileLink);
+
+        // Ajouter le div du message au messageLog
+        messageLog.appendChild(fileDiv);
+    }
+
+    // Vérifier le type du message pour les images
+    else if (messageType === 'image') {
+        console.log("Received image content:", messageContent); // Vérifiez le contenu de l'image dans la console
         // Créer un nouvel élément img
         const imgElement = document.createElement('img');
         // Définir l'attribut src avec les données de l'image base64
         imgElement.src = 'data:image/jpg;base64,' + messageContent;
         // Ajouter l'élément img au messageLog
-        const messageLog = document.getElementById('messageLog');
         messageLog.appendChild(imgElement);
+    }
 
-    } if (adminMessage) {
-        const messageLog = document.getElementById('messageLog');
-        messageLog.innerHTML += `<div data-source = "client">${messageContent}</div>`;
+    // Vérifier et afficher les messages de l'administrateur ou du client
+    if (adminMessage) {
+        if (messageContent !== undefined) { // Vérifie si messageContent n'est pas undefined
+            messageLog.innerHTML += `<div data-source="client">${messageContent}</div>`;
+        }
     } else {
-        const messageLog = document.getElementById('messageLog');
-        messageLog.innerHTML += `<div data-source = "admin">${messageContent}</div>`;
+        if (messageContent !== undefined) { // Vérifie si messageContent n'est pas undefined
+            messageLog.innerHTML += `<div data-source="admin">${messageContent}</div>`;
+        }
     }
 });
+
 
 socket.addEventListener('close', (event) => {
     console.log('WebSocket connection fermé', event);
@@ -77,6 +104,7 @@ window.addEventListener('load', () => {
 const ChatbotStates = {
     INITIAL: 'INITIAL',
     AWAITING_LANGUAGE: 'AWAITING_LANGUAGE',
+    // AWAITING_EMAIL: 'AWAITING_EMAIL', 
     AWAITING_PRO_OR_PART_NAME: 'AWAITING_PRO_OR_PART_NAME', 
     AWAITING_PROORPART_SUBMISSION : 'AWAITING_PROORPART_SUBMISSION',
     AWAITING_ANSWER: 'AWAITING_ANSWER',
@@ -101,11 +129,14 @@ function chatbotResponse(userMessage) {
             response = awaitingProOrPartNameResponse(userMessage);
             break;
         case ChatbotStates.AWAITING_PROORPART_SUBMISSION:
-            response = handleProOrPartNameSubmission (userMessage);
+            response = handleProOrPartNameSubmission ();
             break;
         case ChatbotStates.AWAITING_ANSWER:
             response = awaitingAnswerResponse(userMessage);
             break;
+        // Ajoutez d'autres états au besoin
+        // default:
+        //     response = "Je suis désolé, je ne comprends pas. Pouvez-vous reformuler ?";
     }
     return response;
 }
@@ -196,16 +227,8 @@ function awaitingProOrPartNameResponse(userMessage) {
 }
 
 // Fonction pour gérer la réponse après la saisie du nom ou nom de l'entreprise
-function handleProOrPartNameSubmission(userMessage) {
+function handleProOrPartNameSubmission() {
     const language = localStorage.getItem('language');
-    const userType = localStorage.getItem('userType');
-    // Sauvegarder le nom ou le nom de l'entreprise
-    if (userType === 'pro') {
-        localStorage.setItem('companyName', userMessage);
-    } else if (userType === 'particulier') {
-        localStorage.setItem('personalName', userMessage);
-    }
-    
     if (language === 'fr') {
         chatbotState = ChatbotStates.AWAITING_ANSWER;
         return "Vos coordonnées sont bien reçues. <br><br>" +
@@ -235,7 +258,6 @@ const requestLinkOrPhotoMessageMg = "Mba alefaso ny rohy na sarin'ilay entana az
 const requestAutreAideFr = "Bienvenue au service commercial de BATPRO. Comment pouvons-nous vous aider ?";
 const requestAutreAideMg = "Tongasoa eto amin'ny sampana varotry ny BATPRO. Inona no azo hanampiana anao ?";
 
-
 let awaitingDevis = false;
 let awaitingLinkOrPhoto = false;
 let awaitingPayement = false;
@@ -261,20 +283,10 @@ function awaitingAnswerResponse(userMessage) {
             awaitingDevis = false;
             responseSent = true;
         } else if (awaitingLinkOrPhoto) {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            const phoneRegex = /^\+?\d{10,15}$/;
-            if (emailRegex.test(lowerCaseMessage) || phoneRegex.test(lowerCaseMessage)) {
-                response = (language === 'fr') 
-                    ? "Merci pour votre contact. Un responsable vous contactera dans les 15 minutes." 
-                    : "Misaotra tamin'ny fifandraisanao. Hisy tompon'andraikitra hiantso anao afaka 15 minitra.";
-                awaitingLinkOrPhoto = false;
-                responseSent = true;
-            } else {
-                response = (language === 'fr') 
-                    ? "Afin de vous offrir un suivi personnalisé, veuillez fournir votre contact (WhatsApp, email ou téléphone)." 
-                    : "Mba ahafahanay manara-maso anao manokana dia ataovy eto ny laharana finday na adresy mailaka anao.";
-                responseSent = true;
-            }
+            response = (language === 'fr') ? "Afin de vous offrir un suivi personnalisé, veuillez fournir votre contact (WhatsApp, email ou téléphone). Un responsable vous contactera dans les 15 minutes" : 
+                "Mba ahafahanay manara-maso anao manokana dia ataovy eto ny laharana finday na adresy mailaka anao. Hisy tompon'andraikitra hiantso anao afaka 15 minitra";
+            awaitingLinkOrPhoto = false;
+            responseSent = true;
         } else if (awaitingPayement) {
             response = (language === 'fr') ? "Quel est votre mode de paiement? <br><br>" +
                 "<button id='niveau1' onclick='sendMessage(\"Espèce\", this)'>Espèce</button>" +
@@ -467,6 +479,7 @@ function awaitingAnswerResponse(userMessage) {
     return response;
 }
 
+
 // Fonction pour envoyer le message à l'admin
 function sendMessage(message, button) {
     const userName = localStorage.getItem('userName');
@@ -531,10 +544,8 @@ function sendImage() {
         reader.readAsDataURL(file);
     }
 }
-
 // Récupère l'identifiant du client à partir du DOM.
 function getClientId() {
-    // Supposons que l'ID du client est stocké dans un élément HTML avec l'ID 'clientID'
     // Vous pouvez récupérer cette valeur à partir du DOM
     const clientIdElement = document.getElementById('clientID');
     if (clientIdElement) {
